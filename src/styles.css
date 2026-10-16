@@ -94,7 +94,7 @@ footer>span:first-child{max-width:none}
 .plots-grid .axis-text{font-size:16px;fill:#4f6076;font-weight:500}
 .plots-grid .axis-label{font-size:17px;fill:#344b65;font-weight:600}
 .plots-grid .curve-label{font-size:15px}
-.plots-grid .regime-labels{display:grid;grid-template-columns:1fr 2fr 1fr;padding-left:11.15%;padding-right:23.08%;padding-bottom:10px;font-size:9px;letter-spacing:.4px;color:#52637b;text-align:center;font-weight:600}
+.plots-grid .regime-labels{display:grid;grid-template-columns:1fr 2fr 1fr;padding-left:11.15%;padding-right:23.08%;padding-bottom:14px;font-size:9px;letter-spacing:.4px;color:#52637b;text-align:center;font-weight:600}
 .plots-grid .regime-labels span:last-child{color:#855b34}
 .plot-symbol{font-size:12px;color:#596b82}
 .headroom-definition{color:#63748a;font-size:11px}
