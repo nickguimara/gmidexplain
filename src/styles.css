@@ -43,7 +43,7 @@
 .overview-workspace .metric-label{font-size:7px;letter-spacing:0}
 .overview-workspace .metric-value{font-size:24px}
 @media(min-width:1500px){.overview-workspace{grid-template-columns:250px minmax(0,1fr)}.plots-grid .plot-header h2{font-size:15px}.plots-grid .regime-labels{font-size:7px}.plots-grid{gap:20px}}
-@media(max-width:1200px){.overview-workspace{grid-template-columns:195px minmax(0,1fr)}.overview-workspace .schematic{height:215px}.comparison-card{padding:15px}.plots-grid{gap:12px}.plots-grid .plot-card{padding:16px 10px 8px}.plots-grid .plot-header h2{font-size:11px}.plot-symbol{font-size:9px}.plots-grid .plot-description{font-size:9px;min-height:45px}.overview-workspace .metric-label{font-size:6px}.overview-workspace .metric-value{font-size:20px}.focus-heading h2{font-size:13px}.focus-heading p{font-size:10px}.fixed-bias strong{font-size:9px}}
+@media(max-width:1200px){.overview-workspace{grid-template-columns:195px minmax(0,1fr)}.comparison-card{padding:15px}.plots-grid{gap:12px}.plots-grid .plot-card{padding:16px 10px 8px}.plots-grid .plot-header h2{font-size:11px}.plot-symbol{font-size:9px}.plots-grid .plot-description{font-size:9px;min-height:45px}.overview-workspace .metric-label{font-size:6px}.overview-workspace .metric-value{font-size:20px}.focus-heading h2{font-size:13px}.focus-heading p{font-size:10px}.fixed-bias strong{font-size:9px}}
 @media(max-width:1050px){.overview-workspace{grid-template-columns:1fr}.overview-workspace .left-column{display:grid;grid-template-columns:1.1fr 1fr;gap:16px}.overview-workspace .circuit-card{position:relative;padding-right:50%;min-height:235px}.overview-workspace .schematic{width:100%;height:174px}.overview-workspace .circuit-caption{margin-right:0;position:absolute;bottom:0;left:19px;width:calc(50% - 19px);font-size:7px}.overview-workspace .fixed-bias{position:absolute;left:50%;right:15px;top:17px;border:0;padding:0}.fixed-bias .formula{font-size:11px}.overview-workspace .left-column{grid-template-columns:1.2fr 1fr}.comparison-card p{font-size:9px}.length-key{gap:2px;margin-top:8px}.length-key button{padding:6px;font-size:10px}.plots-grid .plot-header h2{font-size:13px}.plots-grid .plot-description{font-size:10px;min-height:36px}}
 @media(max-width:700px){.focus-control{padding:17px 16px;margin-bottom:16px}.focus-heading{gap:7px;align-items:flex-start}.focus-heading h2{font-size:11px}.focus-heading p{font-size:9px;line-height:1.7;max-width:200px}.focus-heading .regime-badge{font-size:6px;padding:4px;white-space:normal;max-width:85px}.focus-heading .icon-button{padding:0}.focus-heading .icon-button svg{width:12px}.focus-control .efficiency-control output{font-size:25px}.overview-workspace .left-column{display:flex;gap:12px}.overview-workspace .circuit-card{min-height:227px;padding-right:50%}.overview-workspace .schematic{height:175px}.overview-workspace .circuit-caption{left:12px;width:calc(50% - 12px);margin:0}.overview-workspace .fixed-bias{top:15px;right:15px}.fixed-bias p{font-size:9px}.fixed-bias p+p{font-size:8px}.fixed-bias .formula{font-size:12px}.comparison-card{padding:15px}.comparison-card p{font-size:9px;margin-top:6px}.length-key{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-top:10px}.length-key button{font-size:8px;gap:5px;padding:7px 4px;justify-content:center}.length-key button>span{width:9px;height:3px}.length-key button>svg{display:none}.plots-grid{grid-template-columns:1fr;gap:13px}.plots-grid .plot-card{padding:18px 13px 10px}.plots-grid .plot-header h2{font-size:14px}.plot-symbol{font-size:11px}.plots-grid .plot-description{font-size:10px;min-height:0;max-width:100%}.plots-grid .regime-labels{font-size:7px;padding-top:16px}.overview-workspace .metric-label{font-size:5px}.overview-workspace .metric-value{font-size:21px}.selected-length{font-size:10px}.focus-control .efficiency-ends small{font-size:8px}}
 .plot-footnote{font-size:8px;line-height:1.7;color:#97a1af;min-height:28px;padding:4px 4px 0}
@@ -55,6 +55,10 @@
 .data-disclaimer:hover{color:#64786a}
 .fixed-tag{font-size:9px;font-weight:400;color:#9aa4b0;margin-left:5px}
 .focus-control{padding:12px 24px 14px}
+.hero-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:20px;margin-bottom:20px;align-items:stretch}
+.hero-grid .circuit-card{padding:18px 20px 0;display:flex;flex-direction:column}
+.hero-grid .schematic{width:100%;height:272px;min-height:0;flex:none}
+.hero-grid .focus-control{margin-bottom:0}
 .focus-heading h2{font-size:11px;font-weight:500;color:#77869a}
 .focus-control .efficiency-control{margin-top:6px}
 .focus-control .efficiency-ends{font-size:8px}
@@ -102,5 +106,8 @@ footer>span:first-child{max-width:none}
 .chart-tooltip{font-size:12px;color:#344b65}
 .chart-tooltip span{font-size:10px;color:#61728a}
 @media(max-width:1200px) and (min-width:1051px){.plots-grid{grid-template-columns:1fr}}
+@media(max-width:1200px){.hero-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.hero-grid .schematic{height:240px}.hero-grid .focus-control .inversion-zone{font-size:11px}}
+@media(max-width:1050px){.hero-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.hero-grid .schematic{height:210px}}
 @media(max-width:700px){.inversion-zone{font-size:10px;padding:9px 4px}.inversion-ticks{font-size:10px}.focus-control .regime-badge{font-size:8px;max-width:none}.plots-grid .regime-labels{font-size:9px}.plots-grid .axis-text{font-size:17px}.plots-grid .axis-label{font-size:18px}.plots-grid .curve-label{font-size:16px}.length-key button{font-size:9px}.headroom-definition{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
