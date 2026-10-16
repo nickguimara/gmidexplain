@@ -55,10 +55,10 @@
 .data-disclaimer:hover{color:#64786a}
 .fixed-tag{font-size:9px;font-weight:400;color:#9aa4b0;margin-left:5px}
 .focus-control{padding:12px 24px 14px}
-.title-hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:28px;align-items:center;padding:24px 28px;margin-bottom:20px}
+.title-hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:28px;align-items:start;padding:24px 28px;margin-bottom:20px}
 .title-hero-left .export{margin-top:16px}
 .title-hero-left .data-disclaimer{margin:12px 0 0}
-.title-hero-circuit .schematic{width:100%;height:238px}
+.title-hero-circuit .schematic{width:100%;height:205px}
 .controls-grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:20px;margin-bottom:20px}
 .controls-grid .focus-control{margin-bottom:0}
 .plots-full .plots-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -114,8 +114,8 @@ footer>span:first-child{max-width:none}
 .chart-tooltip{font-size:12px;color:#344b65}
 .chart-tooltip span{font-size:10px;color:#61728a}
 @media(max-width:1200px) and (min-width:1051px){.plots-grid{grid-template-columns:1fr}}
-@media(max-width:1200px){.title-hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.title-hero-circuit .schematic{height:210px}}
+@media(max-width:1200px){.title-hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.title-hero-circuit .schematic{height:185px}}
 @media(max-width:1050px){.controls-grid{grid-template-columns:1fr}}
-@media(max-width:700px){.title-hero{grid-template-columns:1fr;padding:20px}.title-hero-circuit .schematic{height:200px}.controls-grid{grid-template-columns:1fr}.plots-full .plots-grid{grid-template-columns:1fr}.plots-full .summary-card .metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.plots-full .summary-card .metric-value{font-size:21px}}
+@media(max-width:700px){.title-hero{grid-template-columns:1fr;padding:20px}.title-hero-circuit .schematic{height:175px}.controls-grid{grid-template-columns:1fr}.plots-full .plots-grid{grid-template-columns:1fr}.plots-full .summary-card .metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.plots-full .summary-card .metric-value{font-size:21px}}
 @media(max-width:700px){.inversion-zone{font-size:10px;padding:9px 4px}.inversion-ticks{font-size:10px}.focus-control .regime-badge{font-size:8px;max-width:none}.plots-grid .regime-labels{font-size:9px}.plots-grid .axis-text{font-size:17px}.plots-grid .axis-label{font-size:18px}.plots-grid .curve-label{font-size:16px}.length-key button{font-size:9px}.headroom-definition{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
