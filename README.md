@@ -1,6 +1,6 @@
 # gm/ID lab
 
-Laboratório web em português para explorar dimensionamento CMOS pelo método gm/ID. Primeiro experimento: fonte comum NMOS com fonte de corrente ideal como carga. Os demais blocos aparecem no menu como futuras iterações.
+Laboratório web em português para explorar dimensionamento CMOS pelo método gm/ID. Primeiro experimento: fonte comum NMOS com fonte de corrente ideal como carga. Segundo experimento: espelho de corrente NMOS com razão 1:1. Carga ativa e par diferencial aparecem no menu como futuras iterações.
 
 ## Executar
 
@@ -28,6 +28,19 @@ O gráfico área × corrente usa o mesmo eixo horizontal dos demais — gm/ID �
 A faixa de comprimento inclui 0,13 µm para exploração conceitual: sua validade para cada dispositivo real deve ser verificada no PDK.
 
 `npm test` verifica a consistência das relações do modelo didático (não a validade física contra o PDK).
+
+## Espelho de corrente (razão 1:1)
+
+Segundo bloco, em `/#/espelho`, com o mesmo controle contínuo (gm/ID, gm fixo em 300 µS) e o mesmo seletor de L do fonte comum. O modelo vive em `src/mirrorModel.js` e reaproveita `operatingPoint`, de modo que largura, área e ganho intrínseco são exatamente os mesmos do primeiro experimento.
+
+M1 é diodo-conectado (gate preso ao dreno) e M2 é o transistor de saída; a razão é fixa em 1:1, então I_out = I_ref = g_m/(g_m/I_D). Os quatro gráficos usam o mesmo eixo horizontal — gm/ID — com uma curva por L:
+
+- **Erro de cópia** (`|ΔI|/I = σ(ΔV_T)·(g_m/I_D)`, em %): lei de Pelgrom com σ(ΔV_T) = K_V/√(W·L) e **K_V = 0,5 mV·µm**, um proxy didático, não uma extração de PDK. Como I ∝ V_OV² e V_OV = 2/(g_m/I_D), o erro relativo de corrente cresce com o gm/ID e cai com a área. No modelo: 1,67% em L = 0,13 µm contra 0,22% em L = 1 µm (a g_m/I_D = 15). Só a parcela de mismatch entra no gráfico; o erro por modulação de canal (λ·V_DS) existe e entra em quadratura, mas neste modelo depende apenas de L e não varyaria com o eixo do gráfico.
+- **Tensão de compliance** (V): V_DS,out,mín ≈ 2/(g_m/I_D), igual à expressão de headroom do fonte comum e por isso independente de L — aparece como curva única.
+- **Ganho com carga em espelho** (V/V): |A_v| = g_m·r_out, o mesmo limite do primeiro experimento, agora imposto pelo transistor de saída do espelho. Com o gm/ID fixo a corrente não muda, então um L maior compra ganho e precisão pagando apenas em área.
+- **Área × corrente**: dois painéis empilhados, agora com a **área do par** 2·W·L e I_out.
+
+O cartão "Ponto selecionado" resume corrente copiada, erro de cópia, área do par e V_DS,out mínima. Quando o erro por mismatch ultrapassa a meta didática de 1%, aparece um aviso laranja no lugar da seção de saturação do fonte comum. Exporta CSV próprio (`gmid-espelho-ilustrativo.csv`) e tem guia próprio. Efeito de corpo, razão k:1, mismatch de layout e a dependência de V_DS na saída não são modelados.
 
 ## Ruído
 
@@ -106,6 +119,10 @@ Para e = gm/ID, GL = 1/RL e VA = (gm/gds)/e, em unidades SI:
 - Banda com Cout = K·ID: `ID·(1/VA − 2πfK) ≥ 2πfCL − GL`.
 
 A última desigualdade pode impor limite inferior **ou superior** de ID; intervalos vazios são descartados. Para minimizar corrente/área por ponto, usa-se a menor corrente admissível. Área é apenas W·L do NMOS; corrente/potência refere-se ao ramo, não ao sistema completo.
+
+## Arquitetura da interface
+
+`src/labUi.jsx` concentra o que os dois blocos compartilham: o gráfico de curva única por métrica (`LabChart`, com `evaluate(gm/ID, L)` injetado), o slider de gm/ID, o seletor de comprimento, o cartão de métrica e o diálogo modal com armadilha de foco. `src/LabShell.jsx` desenha menu lateral e barra superior, marcando o bloco ativo e navegando por hash. `AreaCurrentChart` também é reutilizado: recebe `evaluate` e as chaves de área e corrente, então o mesmo componente serve ao par do espelho.
 
 ## Próxima etapa: caracterização real
 
