@@ -20,34 +20,37 @@ const DEFINITIONS = {
 
 // Mesmo símbolo do fonte comum: transistor com seta interna, barra de gate à
 // esquerda e fonte em zigue-zague até o terra. Só muda o arranjo dos dois ramos.
-function MirrorSchematic({ current, vds }) {
-  return <svg className="schematic" viewBox="0 0 285 212" role="img" aria-label="Espelho de corrente NMOS com razão 1:1. M1 tem o dreno ligado ao próprio gate e recebe a corrente de referência de uma fonte de corrente ideal; M2 copia essa corrente para o nó de saída. Ambas as fontes estão ligadas à massa.">
+function MirrorSchematic({ current }) {
+  const ground = (x, y) => <path d={`M${x} ${y}v7m-12 0h24m-8 5h16m-4 5h8`} />;
+  return <svg className="schematic" viewBox="0 0 300 210" role="img" aria-label="Espelho de corrente NMOS 1 para 1. A fonte ideal injeta I_ref no dreno de M1. M1 é diodo-conectado: seu dreno liga ao próprio gate e ao gate de M2. As fontes vão ao terra; o dreno de M2 é a saída v_out e não está ligado a V_DD.">
     <g fill="none" stroke="#42536b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M85 22h122" />
-      {/* M1 diodo-conectado, símbolo espelhado: gate à direita, alimentado pela fonte ideal */}
-      <path d="M105 22v10" /><circle cx="105" cy="52" r="20" />
-      <path d="M105 40v24m-5-6 5 6 5-6" />
-      <path d="M105 72v38M105 110h17v43h-17v24M105 177v8M117 185h24M113 190h16M109 195h8" />
-      <path d="M111 145h10m-4-4 4 4-4 4" />
-      <path d="M132 112v39" />
-      {/* M2, ramo de saída com dreno em V_DD e tap v_out */}
-      <path d="M200 22v50M200 72v38M200 110h-17v43h17v24M200 177v8M188 185h24M192 190h16M196 195h8" />
-      <path d="M194 145h-10m4-4-4 4 4 4" />
-      <path d="M173 112v39M200 86h45" />
-      {/* gates ligados entre si; o dreno de M1 entra no meio do fio horizontal */}
-      <path d="M105 104h47.5v28M132 132h41" />
-      <circle cx="105" cy="104" r="3" fill="#42536b" /><circle cx="152.5" cy="132" r="3" fill="#42536b" /><circle cx="200" cy="86" r="3" fill="#fff" />
-      <path d="M91 22h22" />
+      {/* Rail alimenta apenas a fonte de referência, não o dreno de saída */}
+      <path d="M62 24h78M100 24v12" />
+      <circle cx="100" cy="52" r="16" />
+      <path d="M100 43v18m-5-5 5 5 5-5M100 68v28" />
+      {/* M1: drain node y=96, channel x=100, gate à direita (espelhado) */}
+      <path d="M100 96v14M100 110v38M127 116v32M100 148v12h-12v22h12v8" />
+      <path d="M106 135h11m-4-4 4 4-4 4" />
+      {/* M2: canal x=210, gate à esquerda; dreno livre em y=96 */}
+      <path d="M210 110v38M183 116v32M210 96v14M210 148v12h12v22h-12v8" />
+      <path d="M204 135h-11m4-4-4 4 4 4" />
+      {/* diodo: dreno de M1 até o meio do fio de gates, depois às duas barras */}
+      <path d="M100 96h55v39M127 135h56" />
+      <circle cx="100" cy="96" r="3" fill="#42536b" />
+      <circle cx="155" cy="135" r="3" fill="#42536b" />
+      {/* output node M2: tap v_out. Isolado do rail V_DD. */}
+      <path d="M210 96h48" />
+      <circle cx="210" cy="96" r="3" fill="#42536b" />
+      {ground(100, 190)}{ground(210, 190)}
     </g>
     <g fontFamily="inherit" fontSize="11" fill="#728096">
-      <text x="115" y="18">Vᴅᴅ = 1,2 V</text>
-      <text x="79" y="52" textAnchor="end">I_ref = {fmt(current)} µA</text>
-      <text x="79" y="68" textAnchor="end" fontSize="9">fonte ideal</text>
-      <text x="208" y="50">I_out = {fmt(current)} µA</text>
-      <text x="249" y="80" fill="#df7037">v_out</text>
-      <text x="78" y="145" fill="#344b65">M₁</text>
-      <text x="213" y="145" fill="#344b65">M₂</text>
-      <text x="14" y="204">Vᴅs,out = {fmt(vds, 2)} V</text>
+      <text x="50" y="20">Vᴅᴅ = 1,2 V</text>
+      <text x="78" y="50" textAnchor="end">I_ref = {fmt(current)} µA</text>
+      <text x="78" y="65" textAnchor="end" fontSize="9">fonte ideal</text>
+      <text x="122" y="163" fill="#344b65">M₁</text>
+      <text x="226" y="164" fill="#344b65">M₂</text>
+      <text x="258" y="91" fill="#df7037">v_out</text>
+      <text x="219" y="112">I_out ≈ {fmt(current)} µA</text>
     </g>
   </svg>;
 }
@@ -67,7 +70,7 @@ function CurrentMirrorPage() {
   }
   return <>
     <LabShell activeKey="cm" version="EXPERIMENTO 02" onHelp={() => setModal('guide')} onUnavailable={setModal}>
-      <div className="card title-hero"><div className="title-hero-left"><h1>Espelho de corrente<span className="title-tag">CM</span></h1><button className="secondary-button export" onClick={exportCSV}><Download size={15} /> Exportar curvas</button><button className="data-disclaimer" onClick={() => setModal('data')}><Info size={13} /> Curvas ilustrativas · Não extraídas do PDK</button></div><div className="title-hero-circuit"><div className="card-heading"><h2>Circuito</h2><span className="neutral-badge">NMOS</span></div><MirrorSchematic current={point.outCurrent} vds={MIRROR.vdsOut} /><div className="circuit-caption"><span className="small-dot" /> Razão 1:1 · fontes em comum</div><div className="fixed-bias"><p>Vᴅs,out = {fmt(MIRROR.vdsOut, 2)} V · Vᴅᴅ = 1,2 V<br />T = 27 °C</p><div className="formula">I_out ≈ I_ref = gₘ / (gₘ/Iᴅ)</div></div></div></div>
+      <div className="card title-hero"><div className="title-hero-left"><h1>Espelho de corrente<span className="title-tag">CM</span></h1><button className="secondary-button export" onClick={exportCSV}><Download size={15} /> Exportar curvas</button><button className="data-disclaimer" onClick={() => setModal('data')}><Info size={13} /> Curvas ilustrativas · Não extraídas do PDK</button></div><div className="title-hero-circuit"><div className="card-heading"><h2>Circuito</h2><span className="neutral-badge">NMOS</span></div><MirrorSchematic current={point.outCurrent} /><div className="circuit-caption"><span className="small-dot" /> Razão 1:1 · fontes em comum</div><div className="fixed-bias"><p>Vᴅs,out = {fmt(MIRROR.vdsOut, 2)} V · Vᴅᴅ = 1,2 V<br />T = 27 °C</p><div className="formula">I_out ≈ I_ref = gₘ / (gₘ/Iᴅ)</div></div></div></div>
       <div className="controls-grid">
         <EfficiencyControl {...{ efficiency, setEfficiency, regime }} onReset={reset} />
         <LengthSelector {...{ length, setLength }} />

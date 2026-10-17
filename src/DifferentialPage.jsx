@@ -7,67 +7,65 @@ import { DIFF, DIFF_METRICS, differentialPoint } from './differentialModel';
 
 const evaluate = (efficiency, length) => differentialPoint(efficiency, length);
 
-// Par diferencial com espelho de carga. Mesma gramática dos outros blocos:
-// canal vertical, barra de gate, seta de canal e zigue-zague da fonte — só o
-// PMOS tem o zigue-zague no topo, porque a fonte dele vai para V_DD.
-//
-// Dois cuidados de traçado. Os gates ficam voltados para fora (M1 à esquerda,
-// M2 à direita), para nenhum fio de entrada precisar cruzar um transistor. E o
-// rail de V_DD fica colado no topo dos símbolos, deixando o fio que junta os
-// gates do espelho passar por cima dele em vez de cruzar as fontes.
-const PAIR = { top: 110, bottom: 156 };
-const MIRROR = { top: 48, bottom: 92 };
-const TAIL = { top: 186, bottom: 222 };
-const RAIL_DD = 44, RAIL_GATE = 28, RAIL_BIAS = 6;
-const mid = s => (s.top + s.bottom) / 2;
+// Par diferencial NMOS convencional com carga em espelho PMOS e fonte de cauda.
+// M1/M2 são o par; M3 (sobre M2) é diodo-conectado; M4 espelha M3 sobre M1;
+// M5 define a corrente de cauda. Não há fonte de bias extra no ramo PMOS.
+const DPM = { input: { top: 140, bottom: 180 }, load: { top: 56, bottom: 88 }, tail: { top: 232, bottom: 268 } };
+const DX = { m1: 112, m4: 112, tail: 162, m2: 212, m3: 212 };
+const GATE_DX = 27;
+const center = s => (s.top + s.bottom) / 2;
 
 function DiffSchematic({ current, efficiency }) {
-  const ground = (x, y) => <path d={`M${x} ${y}v8M${x - 12} ${y + 8}h24M${x - 8} ${y + 13}h16M${x - 4} ${y + 18}h8`} />;
-  const fet = (x, gateX, s, pmos) => <>
-    <path d={`M${x} ${s.top}v${s.bottom - s.top}`} />
-    <path d={`M${x} ${mid(s) - 9}v18m-5-6 5 6 5-6`} />
-    <path d={`M${gateX} ${mid(s) - 16}v32`} />
-    {pmos ? <path d={`M${x} ${s.top}v-4`} /> : <path d={`M${x} ${s.bottom}h-13v20h13v14`} />}
+  const ground = (x, y) => <path d={`M${x} ${y}v7m-12 0h24m-8 5h16m-4 5h8`} />;
+  const mos = (x, span, { pmos = false, gateSide = -1 } = {}) => <>
+    <path d={`M${x} ${span.top}v${span.bottom - span.top}`} />
+    <path d={`M${x} ${center(span) - 9}v18m-5-6 5 6 5-6`} />
+    <path d={`M${x + gateSide * GATE_DX} ${center(span) - 16}v32`} />
+    {pmos
+      ? <path d={`M${x} ${span.top}v-20`} />
+      : <path d={`M${x} ${span.bottom}h-12v18h12v14`} />}
   </>;
-  return <svg className="schematic" viewBox="26 0 240 282" role="img" aria-label="Par diferencial NMOS com carga em espelho de corrente PMOS e fonte de cauda. M1 e M2 são o par de entrada, com os gates em v_id1 e v_id2. O espelho M4 e M3 tem as fontes em V_DD, M3 é diodo-conectado e uma fonte de corrente ideal gera I_bias no nó dos gates. M5 é a fonte de cauda, polarizada por V_bias, e é ela que rejeita o modo comum.">
+  const gateMirrorY = center(DPM.load); // y=72: shared PMOS-gate / M3-diode node
+  const outputY = 112;
+  const commonSourceY = DPM.input.bottom + 32;
+  const tailGateY = center(DPM.tail);
+  return <svg className="schematic" viewBox="0 0 300 314" role="img" aria-label="Par diferencial NMOS M1/M2 com carga em espelho PMOS M3/M4 e fonte de cauda M5. M3, sobre M2, é diodo-conectado: seu dreno liga ao próprio gate e ao gate de M4. M4 e M1 compartilham a saída v_out. M5 é a cauda, polarizada por V_bias.">
     <g fill="none" stroke="#42536b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      {/* fonte de corrente ideal que polariza os gates do espelho */}
-      <path d={`M140 ${RAIL_BIAS}h40M160 ${RAIL_BIAS}v6M160 24v${RAIL_GATE - 24}`} />
-      <circle cx="160" cy="18" r="6" />
-      {/* V_DD, logo acima dos PMOS, para o fio dos gates passar por cima */}
-      <path d={`M110 ${RAIL_DD}h100`} />
-      {/* M4 e M3: o fio dos gates sai das barras, sobe acima do rail e desce na outra ponta */}
-      {fet(125, 98, MIRROR, true)}
-      {fet(195, 222, MIRROR, true)}
-      <path d={`M98 ${mid(MIRROR)}V${RAIL_GATE}H245V100`} />
-      <path d={`M222 ${mid(MIRROR)}V${RAIL_GATE}`} />
-      {/* dreno de M3 é o mesmo nó do dreno de M2: sobe pela coluna e vai até o fio dos gates */}
-      <path d="M195 100h50" />
-      {/* par de entrada; o dreno de M4 é a saída, direto na mesma coluna */}
-      {fet(125, 98, PAIR, false)}
-      {fet(195, 222, PAIR, false)}
-      <path d={`M40 ${mid(PAIR)}h58M240 ${mid(PAIR)}h-18`} />
-      <circle cx="125" cy="101" r="3" fill="#42536b" />
-      {/* fontes de M1 e M2 em um nó só, jogados para a cauda */}
-      <path d="M125 176h70M160 176v10" />
-      {fet(160, 133, TAIL, false)}
-      {ground(160, 256)}
-      <path d={`M133 ${mid(TAIL)}H40`} />
+      {/* rail V_DD e fontes dos PMOS */}
+      <path d={`M86 26h152M${DX.m4} 26v10M${DX.m3} 26v10`} />
+      {mos(DX.m4, DPM.load, { pmos: true, gateSide: 1 })}
+      {mos(DX.m3, DPM.load, { pmos: true, gateSide: -1 })}
+      {/* M4 dreno -> saída; M3 dreno -> M2 dreno e nó de gate comum */}
+      <path d={`M${DX.m4} ${DPM.load.bottom}v${outputY - DPM.load.bottom}`} />
+      <path d={`M${DX.m3} ${DPM.load.bottom}V${gateMirrorY}h-${GATE_DX}M${DX.m3} ${gateMirrorY}V${DPM.input.top}`} />
+      <path d={`M${DX.m4 + GATE_DX} ${gateMirrorY}H${DX.m3}`} />
+      <circle cx={DX.m3} cy={gateMirrorY} r="3" fill="#42536b" />
+      {/* junção M3 drain/gate e M2 drain: nó da referência do espelho */}
+      <circle cx={DX.m3} cy={DPM.input.top} r="3" fill="#42536b" />
+      {/* NMOS differential pair: gates face outward; sources go to the tail node */}
+      {mos(DX.m1, DPM.input, { gateSide: -1 })}
+      {mos(DX.m2, DPM.input, { gateSide: 1 })}
+      <path d={`M${DX.m1} ${outputY}V${DPM.input.top}M30 ${center(DPM.input)}H${DX.m1 - GATE_DX}M${DX.m2 + GATE_DX} ${center(DPM.input)}H270`} />
+      <circle cx={DX.m1} cy={outputY} r="3" fill="#42536b" />
+      {/* tie both NMOS sources; M5 is the only tail device */}
+      <path d={`M${DX.m1} ${commonSourceY}H${DX.m2}M${DX.tail} ${commonSourceY}V${DPM.tail.top}`} />
+      {mos(DX.tail, DPM.tail, { gateSide: -1 })}
+      <path d={`M${DX.tail - GATE_DX} ${tailGateY}H30`} />
+      {ground(DX.tail, DPM.tail.bottom + 32)}
     </g>
     <g fontFamily="inherit" fontSize="11" fill="#728096">
-      <text x="112" y={RAIL_DD - 6}>Vᴅᴅ</text>
-      <text x="168" y="22" fill="#7a6a94">I_bias</text>
-      <text x="139" y="70" fill="#344b65">M₄</text>
-      <text x="203" y="70" fill="#344b65">M₃</text>
-      <text x="139" y="132" fill="#344b65">M₁</text>
-      <text x="203" y="132" fill="#344b65">M₂</text>
-      <text x="176" y="208" fill="#344b65">M₅</text>
-      <text x="106" y="99" fill="#df7037">v_out</text>
-      <text x="42" y="130" fill="#df7037">v_id1</text>
-      <text x="230" y="130" fill="#df7037">v_id2</text>
-      <text x="14" y="212" fill="#7a6a94">V_bias</text>
-      <text x="14" y="252">I_D = {fmt(current)} µA</text>
-      <text x="14" y="268">gₘ/Iᴅ = {fmt(efficiency)} V⁻¹</text>
+      <text x="88" y="21">Vᴅᴅ</text>
+      <text x="123" y="66" fill="#344b65">M₄</text>
+      <text x="216" y="66" fill="#344b65">M₃</text>
+      <text x="123" y="160" fill="#344b65">M₁</text>
+      <text x="216" y="160" fill="#344b65">M₂</text>
+      <text x="177" y="252" fill="#344b65">M₅</text>
+      <text x="77" y="108" fill="#df7037">v_out</text>
+      <text x="30" y={center(DPM.input) - 5} fill="#df7037">v_id1</text>
+      <text x="245" y={center(DPM.input) - 5} fill="#df7037">v_id2</text>
+      <text x="10" y={center(DPM.tail) - 9} fill="#7a6a94">V_bias,tail</text>
+      <text x="16" y="300">I_D = {fmt(current)} µA por ramo</text>
+      <text x="180" y="300">gₘ/Iᴅ = {fmt(efficiency)} V⁻¹</text>
     </g>
   </svg>;
 }
