@@ -1,6 +1,6 @@
 # gm/ID lab
 
-Laboratório web em português para explorar dimensionamento CMOS pelo método gm/ID. Primeiro experimento: fonte comum NMOS com fonte de corrente ideal como carga. Segundo experimento: espelho de corrente NMOS com razão 1:1. Carga ativa e par diferencial aparecem no menu como futuras iterações.
+Laboratório web em português para explorar dimensionamento CMOS pelo método gm/ID. Primeiro experimento: fonte comum NMOS com fonte de corrente ideal como carga. Segundo experimento: espelho de corrente NMOS com razão 1:1. Terceiro: carga ativa (fonte comum com espelho PMOS). O par diferencial aparece no menu como futura iteração.
 
 ## Executar
 
@@ -42,6 +42,22 @@ M1 é diodo-conectado (gate preso ao dreno) e M2 é o transistor de saída; a ra
 Os quatro gráficos do fonte comum continuam sendo ganho, headroom, fT e área × corrente. O espelho tem três: mismatch, compliance mínima e W. O gráfico de ganho em espelho (g_m·r_out) foi removido por repetir a curva de ganho do fonte comum com outros rótulos; o valor continua disponível no modelo e no CSV.
 
 O cartão "Ponto selecionado" resume corrente copiada, mismatch, **W necessária**, compliance mínima e a **folga de saída** (V_DS,out − V_DS,out,mín), que é a margem real antes de M2 sair de saturação. Quando o mismatch ultrapassa a meta didática de 1%, aparece um aviso laranja no lugar da seção de saturação do fonte comum. Exporta CSV próprio (`gmid-espelho-ilustrativo.csv`) e tem guia próprio. Efeito de corpo, razão k:1, mismatch de layout e a dependência de V_DS na saída não são modelados.
+
+## Carga ativa (fonte comum com espelho PMOS)
+
+Terceiro bloco, em `/#/carga-ativa`, com o mesmo controle contínuo (gm/ID, gm fixo em 300 µS), o mesmo seletor de L e C_L = 2 pF fixo. O modelo vive em `src/activeLoadModel.js` e reaproveita `operatingPoint`, então ganho, V_A e headroom vêm da mesma base didática dos outros dois blocos.
+
+A narrativa é a da troca de uma fonte ideal por um transistor. Três gráficos, todos com gm/ID no eixo x:
+
+- **Ganho do estágio** (V/V): |Aᵥ| = gₘ·r_out com r_out = r_o1 ∥ r_o,carga. A saída vê a impedância do NMOS de entrada **e** a do PMOS do espelho ao mesmo tempo, então o ganho fica entre 37% e 51% do ideal gₘ/gds conforme o L — nunca acima. A perda é a mesma curva do fonte comum com outro rótulo, então o gráfico não repete o anterior: ele mostra o *preço*.
+- **Headroom do par** (V): as duas sobreconduções se empilham entre a fonte e V_DD, V_out ≥ V_OV1 + V_OV,carga ≈ 4/(gₘ/I_D). É a diferença real para o fonte comum, cuja carga ideal não pedia nada. O swing disponível é V_DD menos esse valor.
+- **Banda do estágio** (MHz): f₋₃dB = 1/[2π·r_out·(C_L + C_out)]. Com carga ideal não havia r_out para fechar um polo; aqui a banda do amplificador deixa de ser indefinida. É o primeiro bloco em que a banda real aparece — a f_T dos outros blocos é intrínseca e não é a banda do estágio.
+
+Duas consequências que os gráficos tornam visíveis. Primeira: **ganho × banda é constante**, porque ao multiplicar r_out se cancela e sobra GBW = gₘ/(2πC_total) ≈ 23,8 MHz. Alongar L compra ganho e paga com banda e área — não dá para fugir. Segunda: **mais eficiência sobe o ganho** (r_out cresce com η), mas desce a banda e o consumo, enquanto o headroom do par cai e devolve swing.
+
+O espelho é desenhado com L_carga = min(1 µm, 2·L), porque a carga é quem limita o ganho. O PMOS entra com V_A 60% da do NMOS e mobilidade 50%, então a largura do espelho sai 4× a da entrada para a mesma corrente. C_out é um proxy linear em largura, Σ W(0,35 + 0,4L) fF/µm, o mesmo proxy de `src/methodology.js` e não Cgg nem dado de PDK. A banda é de um polo com carga externa resistiva: não há polo de entrada nem Miller completo.
+
+O cartão "Ponto selecionado" resume ganho, ganho ideal, banda, headroom do par e área do par. Exporta CSV próprio (`gmid-carga-ativa-ilustrativo.csv`) e tem guia próprio.
 
 ## Ruído
 
@@ -123,7 +139,7 @@ A última desigualdade pode impor limite inferior **ou superior** de ID; interva
 
 ## Arquitetura da interface
 
-`src/labUi.jsx` concentra o que os dois blocos compartilham: o gráfico de curva única por métrica (`LabChart`, com `evaluate(gm/ID, L)` injetado), o slider de gm/ID, o seletor de comprimento, o cartão de métrica e o diálogo modal com armadilha de foco. `src/LabShell.jsx` desenha menu lateral e barra superior, marcando o bloco ativo e navegando por hash. `TradeoffChart.jsx` (antes `AreaCurrentChart.jsx`) desenha a grandeza por L em escala log e, por padrão, um segundo painel com a corrente: recebe `evaluate`, as chaves, os rótulos e a faixa logarítmica por props, então o mesmo componente serve à área de gate do fonte comum (dois painéis) e à largura do espelho (`showCurrent={false}`, um painel só).
+`src/labUi.jsx` concentra o que os três blocos compartilham: o gráfico de curva única por métrica (`LabChart`, com `evaluate(gm/ID, L)` injetado), o slider de gm/ID, o seletor de comprimento, o cartão de métrica e o diálogo modal com armadilha de foco. `src/LabShell.jsx` desenha menu lateral e barra superior, marcando o bloco ativo e navegando por hash. `TradeoffChart.jsx` (antes `AreaCurrentChart.jsx`) desenha a grandeza por L em escala log e, por padrão, um segundo painel com a corrente: recebe `evaluate`, as chaves, os rótulos e a faixa logarítmica por props, então o mesmo componente serve à área de gate do fonte comum (dois painéis) e à largura do espelho (`showCurrent={false}`, um painel só).
 
 ## Próxima etapa: caracterização real
 
