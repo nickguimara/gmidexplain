@@ -10,38 +10,41 @@ const evaluate = (efficiency, length) => activeLoadPoint(efficiency, length);
 // Dois transistores, na mesma gramática do lab do fonte comum: canal vertical,
 // barra de gate à esquerda, seta de canal e zigue-zague da fonte. No PMOS o
 // zigue-zague fica no topo, porque a fonte vai para V_DD.
-function ActiveSchematic({ current, efficiency }) {
+function ActiveSchematic({ current }) {
   const ground = (x, y) => <path d={`M${x} ${y}v8M${x - 12} ${y + 8}h24M${x - 8} ${y + 13}h16M${x - 4} ${y + 18}h8`} />;
-  const fet = (x, top, bottom, { pmos = false } = {}) => <>
+  // Canal em x, de top a bottom. No PMOS a fonte sobe para V_DD; no NMOS desce
+  // em zigue-zague até o terra. A barra de gate fica 27 px à esquerda e o fio de
+  // entrada entra no meio dela. Os dois transistores dividem a mesma coluna: o
+  // dreno de M_L e o de M1 são o nó de saída.
+  const fet = (x, top, bottom, pmos) => <>
     <path d={`M${x} ${top}v${bottom - top}`} />
-    <path d={`M${x} ${top + 26}v18m-5-6 5 6 5-6`} />
-    {pmos ? <path d={`M${x} ${top}v-30`} /> : <path d={`M${x} ${bottom}h-17v33h17v20`} />}
+    <path d={`M${x} ${top + 24}v18m-5-6 5 6 5-6`} />
     <path d={`M${x - 27} ${top + 18}v32`} />
+    {pmos
+      ? <path d={`M${x} ${top}v-26`} />
+      : <><path d={`M${x} ${bottom}h-15v26h15v18`} /><path d={`M${x + 6} ${bottom + 12}h-10m4-4-4 4 4 4`} /></>}
   </>;
-  return <svg className="schematic" viewBox="0 0 300 210" role="img" aria-label="Fonte comum NMOS com um único transistor PMOS como carga ativa. M1 recebe a entrada em v_in e tem a saída tomada no dreno, em v_out, onde fica a carga C_L. O gate da carga está numa tensão de polarização fixa V_bias, separada do rail de V_DD, então a corrente é imposta pelo transistor e não por um espelho.">
+  return <svg className="schematic" viewBox="24 6 232 256" role="img" aria-label="Fonte comum NMOS com um único transistor PMOS como carga ativa. M1 recebe a entrada em v_in e tem a saída tomada no dreno, em v_out, onde fica a carga C_L. O gate da carga está numa tensão de polarização fixa V_bias, separada do rail de V_DD, então a corrente é imposta pelo transistor e não por um espelho.">
     <g fill="none" stroke="#42536b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      {/* rails separados: V_DD alimenta a fonte da carga; V_bias polariza o gate dela */}
-      <path d="M186 30h64M92 30h56v52h81" />
-      {fet(200, 60, 120, { pmos: true })}
-      {fet(120, 120, 170)}
-      <path d="M40 154h53" />
-      {/* no de saida: dreno de M1 e dreno de M_L, com C_L */}
-      <path d="M120 120h130M240 120v18M233 138h14M236 142h8" />
-      <path d="M104 186h-11m4-4-4 4 4 4" />
-      {ground(120, 198)}
-      {ground(240, 142)}
-      <circle cx="120" cy="120" r="3" fill="#42536b" />
+      {/* V_DD alimenta só a fonte de M_L; V_bias é um rail separado, só do gate */}
+      <path d="M190 26h55M95 26H35v60h128" />
+      {fet(190, 52, 112, true)}
+      {fet(190, 132, 192, false)}
+      {/* nó de saída entre os dois drenos, com C_L pendurada à direita */}
+      <path d="M190 112v20M163 166H35M190 122h45v28M228 150h14M231 156h8" />
+      {ground(235, 156)}
+      {ground(190, 236)}
+      <circle cx="190" cy="112" r="3" fill="#42536b" /><circle cx="190" cy="132" r="3" fill="#42536b" />
     </g>
     <g fontFamily="inherit" fontSize="11" fill="#728096">
-      <text x="192" y="22">Vᴅᴅ = 1,2 V</text>
-      <text x="94" y="22" fill="#7a6a94">V_bias</text>
-      <text x="208" y="96" fill="#344b65">M_L</text>
-      <text x="62" y="138" fill="#344b65">M₁</text>
-      <text x="14" y="150" fill="#df7037">vᵢₙ</text>
-      <text x="128" y="112" fill="#df7037">v_out</text>
-      <text x="228" y="168" fill="#4b5f78">C_L</text>
-      <text x="14" y="200">I_D = {fmt(current)} µA</text>
-      <text x="240" y="200">gₘ/Iᴅ = {fmt(efficiency)} V⁻¹</text>
+      <text x="196" y="20">Vᴅᴅ = 1,2 V</text>
+      <text x="38" y="20" fill="#7a6a94">V_bias</text>
+      <text x="205" y="95" fill="#344b65">M_L</text>
+      <text x="205" y="178" fill="#344b65">M₁</text>
+      <text x="6" y="162" fill="#df7037">vᵢₙ</text>
+      <text x="152" y="118" fill="#df7037">v_out</text>
+      <text x="222" y="196" fill="#4b5f78">C_L</text>
+      <text x="14" y="240">I_D = {fmt(current)} µA</text>
     </g>
   </svg>;
 }
@@ -61,7 +64,7 @@ function ActiveLoadPage() {
   }
   return <>
     <LabShell activeKey="al" version="EXPERIMENTO 03" onHelp={() => setModal('guide')} onUnavailable={setModal}>
-      <div className="card title-hero"><div className="title-hero-left"><h1>Carga ativa<span className="title-tag">AL</span></h1><button className="secondary-button export" onClick={exportCSV}><Download size={15} /> Exportar curvas</button><button className="data-disclaimer" onClick={() => setModal('data')}><Info size={13} /> Curvas ilustrativas · Não extraídas do PDK</button></div><div className="title-hero-circuit"><div className="card-heading"><h2>Circuito</h2><span className="neutral-badge">NMOS + PMOS</span></div><ActiveSchematic {...{ current: point.current, efficiency }} /><div className="circuit-caption"><span className="small-dot" /> Um transistor de carga · C_L = 2 pF</div><div className="fixed-bias"><p>Vᴅᴅ = 1,2 V · C_L = 2 pF<br />T = 27 °C</p><div className="formula">V_OV,carga = 2/{fmt(ACTIVE_LOAD.loadEfficiency)} V</div></div></div></div>
+      <div className="card title-hero"><div className="title-hero-left"><h1>Carga ativa<span className="title-tag">AL</span></h1><button className="secondary-button export" onClick={exportCSV}><Download size={15} /> Exportar curvas</button><button className="data-disclaimer" onClick={() => setModal('data')}><Info size={13} /> Curvas ilustrativas · Não extraídas do PDK</button></div><div className="title-hero-circuit"><div className="card-heading"><h2>Circuito</h2><span className="neutral-badge">NMOS + PMOS</span></div><ActiveSchematic current={point.current} /><div className="circuit-caption"><span className="small-dot" /> Um transistor de carga · C_L = 2 pF</div><div className="fixed-bias"><p>Vᴅᴅ = 1,2 V · C_L = 2 pF<br />T = 27 °C</p><div className="formula">V_OV,carga = 2/{fmt(ACTIVE_LOAD.loadEfficiency)} V</div></div></div></div>
       <div className="controls-grid">
         <EfficiencyControl {...{ efficiency, setEfficiency, regime }} onReset={reset} />
         <LengthSelector {...{ length, setLength }} />
