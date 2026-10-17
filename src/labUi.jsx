@@ -42,8 +42,8 @@ export function LabChart({ id, config, evaluate, efficiency, setEfficiency, leng
   </svg>{hover !== null && <div className="chart-tooltip">L = {fmt(length, 2)} µm · gₘ/Iᴅ {fmt(hover)}<span>{fmt(hoverValue, 2)} {config.unit} · Clique para selecionar</span></div>}</div>;
 }
 
-export function EfficiencyControl({ efficiency, setEfficiency, regime, onReset }) {
-  return <section className="card focus-control"><div className="focus-heading"><div><h2>gₘ = 300 µS <span className="fixed-tag">fixo</span></h2></div><span className="regime-badge"><span />{regime}</span><button className="icon-button" onClick={onReset} title="Restaurar ponto inicial" aria-label="Restaurar ponto inicial"><RotateCcw size={15} /></button></div><div className="efficiency-control"><label htmlFor="efficiency">gₘ/Iᴅ</label><output>{fmt(efficiency)} <small>V⁻¹</small></output></div>
+export function EfficiencyControl({ efficiency, setEfficiency, regime, onReset, fixedLabel = 'gₘ = 300 µS', targetLabel = 'gₘ/Iᴅ' }) {
+  return <section className="card focus-control"><div className="focus-heading"><div><h2>{fixedLabel} <span className="fixed-tag">fixo</span></h2></div><span className="regime-badge"><span />{regime}</span><button className="icon-button" onClick={onReset} title="Restaurar ponto inicial" aria-label="Restaurar ponto inicial"><RotateCcw size={15} /></button></div><div className="efficiency-control"><label htmlFor="efficiency">{targetLabel}</label><output>{fmt(efficiency)} <small>V⁻¹</small></output></div>
     <input className="efficiency-range" id="efficiency" type="range" min="5" max="25" step=".1" value={efficiency} aria-valuetext={`${fmt(efficiency)} V⁻¹, ${regime}`} onChange={e => setEfficiency(+e.target.value)} />
     <div className="inversion-ticks" aria-hidden="true">{[5, 10, 15, 20, 25].map((value, i) => <span key={value} style={{ left: `${i * 25}%` }}>{value}</span>)}</div>
     <div className="inversion-zones" aria-label="Regiões de inversão, faixas didáticas aproximadas" title="Faixas didáticas aproximadas, não limites físicos exatos">
@@ -54,8 +54,8 @@ export function EfficiencyControl({ efficiency, setEfficiency, regime, onReset }
   </section>;
 }
 
-export function LengthSelector({ length, setLength }) {
-  return <section className="card comparison-card"><h2>Comprimento de canal</h2><div className="length-key">{LENGTHS.map((l, i) => <button key={l} aria-pressed={length === l} onClick={() => setLength(l)} className={length === l ? 'selected' : ''} style={{ '--curve-color': COLORS[i] }}><span />L = {fmt(l, 2)} µm{length === l && <Check size={13} />}</button>)}</div></section>;
+export function LengthSelector({ length, setLength, label = 'Comprimento de canal' }) {
+  return <section className="card comparison-card"><h2>{label}</h2><div className="length-key">{LENGTHS.map((l, i) => <button key={l} aria-pressed={length === l} onClick={() => setLength(l)} className={length === l ? 'selected' : ''} style={{ '--curve-color': COLORS[i] }}><span />L = {fmt(l, 2)} µm{length === l && <Check size={13} />}</button>)}</div></section>;
 }
 
 export function LabDialog({ onClose, title, icon, actionLabel, children }) {

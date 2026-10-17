@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { operatingPoint, designPoint, LENGTHS, BIAS, NOISE } from './model.js';
+import { minimumSaturationVoltage } from './selectionPhysics.js';
 
 test('180 pontos de caracterização são finitos com carga de corrente ideal', () => {
   for (const length of LENGTHS) for (const current of [5, 20, 100]) {
@@ -48,10 +49,7 @@ test('a comparação mantém gm fixo enquanto troca consumo por área', () => {
   }
 });
 
-test('a densidade de corrente decresce com o gm/ID e satura em subthreshold', () => {
-  // Regressão: o fator de inversão (n−1)²−1 antigo ia a zero em inversão fraca,
-  // o que fazia W e a área explodirem e o mismatch de Pelgrom "melhorar" sem
-  // limite. O patamar garante que J_D nunca zere nem decresça mais que isso.
+test('a densidade ilustrativa decresce na faixa de seleção, sem alegar modelo físico em WI', () => {
   for (const length of LENGTHS) {
     let previous = Infinity;
     for (let i = 0; i <= 400; i++) {
@@ -65,23 +63,22 @@ test('a densidade de corrente decresce com o gm/ID e satura em subthreshold', ()
     const weak = designPoint(25, length);
     assert(Math.abs(weak.current / weak.width - 377 / (625 * length)) < 1e-9);
   }
-  // e o platô realmente é o que limita: com eta enorme, J_D deixa de cair
-  const huge = operatingPoint(1e6, .5, 1, .6);
-  assert(Math.abs(huge.current / huge.width - .05) < 1e-9);
+  // Fora da faixa física de gm/ID, o proxy de saturação recusa a extrapolação.
+  assert.throws(() => operatingPoint(1e6, .5, 1, .6), RangeError);
   // em inversão forte a escala é V_OV²/L, ou seja 1/(gₘ/Iᴅ)²·L
   const a = operatingPoint(10, .5, 20, .6), b = operatingPoint(20, .5, 20, .6);
   assert(Math.abs((a.current / a.width) / (b.current / b.width) - 4) < 1e-9);
 });
 
-test('headroom estima a tensão de saturação, sem inventar dependência em L', () => {
+test('tensão mínima usa o critério de 99%, sem inventar dependência em L', () => {
   for (const efficiency of [5, 10, 15, 20, 25]) for (const length of LENGTHS) {
     const point = designPoint(efficiency, length);
-    assert.equal(point.headroom, 2 / efficiency);
+    assert.equal(point.headroom, minimumSaturationVoltage(efficiency));
     assert.equal(point.headroom, designPoint(efficiency, .13).headroom);
     assert.equal(point.saturated, BIAS.vds >= point.headroom);
   }
-  assert.equal(designPoint(5, .5).headroom, .4);
-  assert.equal(designPoint(25, .5).headroom, .08);
+  assert.notEqual(designPoint(5, .5).headroom, .4);
+  assert(designPoint(25, .5).headroom > .1);
   assert(designPoint(25, .5).headroom < designPoint(5, .5).headroom);
   assert.equal(operatingPoint(5, .5, 20, .2).saturated, false);
 });

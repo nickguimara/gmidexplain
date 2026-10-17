@@ -1,73 +1,63 @@
-// Par diferencial NMOS com carga em espelho de corrente PMOS e fonte de cauda.
-// M1/M2 são o par de entrada, M3/M4 o espelho de carga (M3 diodo-conectado) e
-// M5 a fonte de cauda. Modelo didático: NÃO é SPICE nem dados do PDK IHP SG13G2.
-import { BIAS, designPoint, operatingPoint } from './model.js';
+// gm/ID selection for the INPUT pair only. No CMRR/ICMR proxy: these require
+// a separate operating-point/topology analysis. Fixed current per input branch;
+// gm varies with the INPUT gm/ID. Loads and tail are unchanged references.
+import { BIAS, NOISE, operatingPoint } from './model.js';
+import { differentialLinearity } from './selectionPhysics.js';
 
 export const DIFF = {
-  // Cauda e espelho são polarizados por tensão, então a eficiência deles é uma
-  // escolha de projeto e não acompanha o gₘ/Iᴅ do par de entrada.
-  tailEfficiency: 12, // V⁻¹
-  loadEfficiency: 12, // V⁻¹
-  // A carga e a cauda querem ser mais longas que o par: r_o da carga limita o
-  // ganho e r_o da cauda limita a rejeição de modo comum.
-  lengthFactor: 2,
-  maxLength: 1,
-  loadVAFactor: 0.6, // V_A do PMOS
-  // Coeficiente de Pelgrom para o desvio de V_T entre M1 e M2. Em par, o
-  // desvio de área é √2 vezes maior que no transistor isolado.
-  avt: 0.5e-3, // V·µm
+  current: 20, loadGm: 240, loadLength: 1, // µA per branch, µS per PMOS, µm
+  areaComparisonGm: 300, // µS per input, only for the area/current reference plot
+  tailEfficiency: 12, tailLength: 1,
+  hd3Db: -60,
+  // Pair-difference convention, same as mirror: sigma(Delta VT)=A_VT/sqrt(WL).
+  avt: 0.5e-3,
 };
 
-const span = length => Math.min(DIFF.maxLength, length * DIFF.lengthFactor);
-const vov = efficiency => 2 / efficiency;
+export function differentialAreaCurrentPoint(efficiency, length, gm = DIFF.areaComparisonGm) {
+  const input = operatingPoint(efficiency, length, gm / efficiency, BIAS.vds);
+  return { gm, area: 2 * input.area, current: 2 * input.current };
+}
 
 export function differentialPoint(efficiency, length) {
-  const input = designPoint(efficiency, length);
-  const current = input.current; // corrente em cada ramo do par
-
-  const loadLength = span(length);
-  const load = operatingPoint(DIFF.loadEfficiency, loadLength, current, BIAS.vds);
-  const tailLength = span(length);
-  const tail = operatingPoint(DIFF.tailEfficiency, tailLength, 2 * current, BIAS.vds);
-
-  // Ganho diferencial de saída simples: meio-circuito diferencial, M2 tem dreno
-  // virtual e não carrega a saída. A saída vê r_o de M1 em paralelo com r_o do
-  // espelho. |A_vd| = g_m,1·(r_o1 ∥ r_o4).
-  const roLoad = DIFF.loadVAFactor * load.ro; // kΩ
-  const rout = 1 / (1 / input.ro + 1 / roLoad);
-  const gain = input.gm * rout / 1000;
-
-  // Rejeição de modo comum: a fonte de cauda é a que rejeita. Para entrada em
-  // modo comum, A_cm ≈ R_out/(2·r_tail), contra |A_vd| = g_m·R_out. Logo
-  // CMRR = 2·g_m·r_tail = 2·(g_m/I_D)·V_A,cauda — não depende da corrente,
-  // só da eficiência da cauda e do L.
-  const cmrr = 2 * efficiency * (3 + tailLength * 19);
-
-  // Faixa de entrada em modo comum: o gate não pode descer abaixo da sobrecondução
-  // da cauda mais a do par, nem subir acima do que a carga deixa.
-  const vMin = vov(efficiency) + vov(DIFF.tailEfficiency);
-  const vMax = BIAS.vdd - vov(DIFF.loadEfficiency);
-  const icmr = vMax - vMin;
-
-  // Offset de entrada por mismatch: num par, as duas áreas não casam, então
-  // σ(V_os) = A_VT/√(2·W·L) — o √2 vem de duas variâncias somadas.
-  const offset = DIFF.avt / Math.sqrt(2 * input.area); // V
-
+  const input = operatingPoint(efficiency, length, DIFF.current, BIAS.vds);
+  const current = input.current;
+  // Reference loads do not participate in this input-pair selection sweep.
+  const loadEfficiency = DIFF.loadGm / current;
+  const load = operatingPoint(loadEfficiency, DIFF.loadLength, current, BIAS.vds);
+  const tail = operatingPoint(DIFF.tailEfficiency, DIFF.tailLength, 2 * current, BIAS.vds);
+  const noiseFactor = 8 * NOISE.boltzmann * NOISE.temperature * NOISE.gamma;
+  // Differential INPUT PAIR channel noise only. No PMOS-load multiplier.
+  // SI: V²/Hz. Plot in nV²/Hz; amplitude density is exported separately.
+  const thermalNoisePSD = noiseFactor / (input.gm * 1e-6);
+  const noisePower = thermalNoisePSD * 1e18;
+  const thermalNoise = Math.sqrt(thermalNoisePSD) * 1e9;
+  const offset = DIFF.avt / Math.sqrt(input.area);
+  const linearity = differentialLinearity(efficiency, DIFF.hd3Db);
+  const areaComparison = differentialAreaCurrentPoint(efficiency, length);
   return {
-    ...input, length,
-    input, load, tail,
-    loadLength, tailLength, roLoad, rout,
-    gain,
-    cmrr, cmrrDb: 20 * Math.log10(cmrr),
-    vMin, vMax, icmr,
-    offset, offsetMv: offset * 1e3,
-    compliant: icmr > 0 && vMax > vMin,
-    pairArea: 2 * input.area + load.area + tail.area,
+    efficiency, length, input, current, tail, load, loadEfficiency,
+    thermalNoisePSD, noisePower, thermalNoise, offset, offsetMv: offset * 1e3,
+    intrinsicGain: input.intrinsicGain, tailCurrent: 2 * current,
+    ft: input.ft, linearityMv: linearity.amplitude * 1e3,
+    hd3Db: DIFF.hd3Db,
+    pairArea: 2 * input.area,
+    comparisonArea: areaComparison.area, comparisonCurrent: areaComparison.current,
+    comparisonGm: areaComparison.gm,
   };
 }
 
 export const DIFF_METRICS = {
-  cmrr: { key: 'cmrrDb', title: 'Rejeição de modo comum', symbol: 'CMRR = 2·(gₘ/Iᴅ)·V_A,cauda', unit: 'dB' },
-  icmr: { key: 'icmr', title: 'Faixa de modo comum', symbol: 'V_DD − V_OV,carga − V_OV,cauda − V_OV,1', unit: 'V', shared: true },
-  offset: { key: 'offsetMv', title: 'Offset por mismatch', symbol: 'σ(V_os) = A_VT/√(2·W·L)', unit: 'mV' },
+  intrinsicGain: { key: 'intrinsicGain', title: 'Ganho intrínseco', latex: String.raw`A_i=\frac{g_{m,1}}{g_{ds,1}}`, unit: 'V/V' },
+  noise: { key: 'noisePower', title: 'Ruído diferencial referido à entrada', latex: String.raw`\frac{\overline{v_{in,\mathrm{diff}}^2}}{\Delta f}=\frac{8kT\gamma_n}{g_{m1,2}}=\frac{8kT\gamma_n}{(g_m/I_D)_{in}\,I_{D1,2}}`, unit: 'nV²/Hz', shared: true },
+  linearity: { key: 'linearityMv', title: 'Linearidade · HD3 ≤ −60 dBc', latex: String.raw`\hat v_{id,\max}\approx\sqrt{\frac{4\cdot10^{-3}}{|a_3/g_m|}}`, unit: 'mV pico', shared: true },
+  mismatch: { key: 'offsetMv', title: 'Mismatch de entrada', latex: String.raw`\sigma(V_{OS})=\frac{A_{VT}}{\sqrt{WL}}`, unit: 'mV' },
+  ft: { key: 'ft', title: 'fT da entrada', latex: String.raw`f_{T,1}=\frac{g_{m,1}}{2\pi C_{gg,1}}`, unit: 'GHz', tall: true },
+  areaCurrent: {
+    key: 'comparisonArea', title: 'Área × corrente · gm fixo', summaryTitle: 'Área para gm = 300 µS/entrada',
+    latex: String.raw`g_{m1,2}=300\,\mu\mathrm S,\quad I_{\rm cauda,ref}=\frac{2g_{m1,2}}{(g_m/I_D)_{in}},\quad A_{\rm ref}=2WL`,
+    unit: 'µm²', chart: 'tradeoff', areaKey: 'comparisonArea', currentKey: 'comparisonCurrent',
+    areaLabel: 'Área do par (µm² · log)', currentLabel: 'I_cauda (µA)',
+    referenceGm: DIFF.areaComparisonGm, branchCount: 2,
+    csvSeries: [{ key: 'comparisonArea', unit: 'µm²' }, { key: 'comparisonCurrent', unit: 'µA' }, { key: 'comparisonGm', unit: 'µS/entrada' }],
+  },
 };

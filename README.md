@@ -15,15 +15,15 @@ Abra o endereço mostrado pelo Vite. `npm run build` gera o site estático em `d
 
 **As curvas são ilustrativas, não dados simulados do PDK IHP SG13G2. Não use para dimensionamento de fabricação.**
 
-O modelo em `src/model.js` relaciona eficiência, densidade de corrente, largura, transcondutância, resistência de saída e capacitância por aproximações analíticas com constantes didáticas. A densidade segue a escala de inversão forte, J_D = 377/((gₘ/Iᴅ)²·L) µA/µm, com um patamar de subthreshold de 0,05 µA/µm que impede J_D de chegar a zero. Uma versão anterior usava o fator de inversão (n−1)²−1 do EKV, que decaía a zero em inversão fraca: W e a área explodiam e a lei de Pelgrom parecia melhorar sozinha, produzindo uma curva de mismatch com formato de tenda. O patamar corrige isso e é travado por teste. O único controle contínuo é gm/ID. Quatro gráficos simultâneos mostram ganho, headroom mínimo do NMOS, fT e área × corrente. O ruído é abordado apenas no exemplo guiado específico, não nos plots do laboratório. As curvas têm cores distintas e rótulos de L. A seleção de comprimento apenas destaca uma das curvas e sua leitura numérica. Inclui exportação CSV. As explicações detalhadas ficam em “Como usar”; o headroom tem apenas sua definição curta junto ao gráfico.
+O modelo em `src/model.js` usa relações analíticas ilustrativas para densidade, resistência de saída e capacitâncias. Na faixa do slider, J_D = 377/((gₘ/Iᴅ)²·L) µA/µm. O piso numérico de densidade no código não constitui uma caracterização de subthreshold, nem torna essa lei válida em inversão fraca. Curvas não precisam ser monotônicas por princípio: a tendência depende de quais grandezas ficam constantes. O único controle contínuo é gm/ID; L continua como seleção discreta. Os quatro blocos são ferramentas de escolha de inversão, não soluções completas de polarização.
 
 O circuito assume VDD = 1,2 V, **gm = 300 µS** e VDS = 0,6 V. Para comparar soluções de mesma transcondutância, a corrente varia como ID = gm/(gm/ID): de 60 µA a 12 µA. O consumo estático é VDD × ID. A área mostrada é apenas W × L do NMOS, não a área de layout ou da fonte de corrente. `designPoint` centraliza essa condição para a interface, os gráficos e a exportação.
 
 A fonte de corrente ideal tem resistência incremental infinita, logo o ganho em módulo é gm × ro = gm/gds. VDS é um ponto de polarização assumido para a caracterização; a fonte ideal não o determina sozinha. A frequência fT é intrínseca e não a banda do estágio.
 
-O headroom mínimo do NMOS é estimado por `VDS,sat ≈ 2/(gm/ID)`: a tensão dreno–fonte necessária para manter a saturação. **Não é swing de saída, margem VDS − VDS,sat ou tensão de polarização.** Não há headroom adicional da carga porque ela é ideal. Uma carga real exigiria sua própria tensão mínima. A aproximação é didática, não um VDS,sat extraído do PDK, e tem limitações especialmente em inversão fraca. Não há dependência de L nessa aproximação, portanto o gráfico mostra uma única curva identificada como comum a todos os comprimentos. A condição VDS ≥ 2/(gm/ID) também é apenas uma verificação aproximada de saturação.
+A tensão mínima de saturação usa um **critério operacional explícito de 99% da corrente direta**, não a igualdade universal VDS,sat = 2/(gm/ID). `src/selectionPhysics.js` inverte a eficiência de um proxy inspirado no EKV, I_F ∝ log²(1+exp(z)), e calcula V_DS mínimo para I_R/I_F = 1%. Usa n = 1,4 e U_T = 25,85 mV; não inclui canal curto nem dependência com L. **Não é uma extração do PDK nem swing.** Em gm/ID = 10, resulta aproximadamente 0,191 V. A validação real deverá substituir este proxy por LUTs, preservando um critério declarado. A densidade e as capacitâncias são proxies separados, não um modelo compacto único.
 
-O gráfico área × corrente usa o mesmo eixo horizontal dos demais — gm/ID — em dois painéis empilhados: acima, a área de gate W·L (µm², log) para os quatro comprimentos; abaixo, a corrente I_D (µA, linear) em curva única, pois com g_m fixo a corrente independe de L. O gráfico de fT usa a mesma altura e geometria, de modo que os dois cartões da linha têm topo, faixas de inversão e eixo x alinhados. O slider e o clique no gráfico movem o ponto nos dois painéis ao mesmo tempo. A potência permanece disponível no CSV e no modelo como VDD × ID.
+O gráfico área × corrente usa o mesmo eixo horizontal dos demais — gm/ID — em dois painéis empilhados **para gm dado (300 µS)**: acima, área de gate W·L (µm², log) por L; abaixo, corrente I_D = gm/(gm/ID) (µA, linear), independente de L. O gráfico de fT usa a mesma altura de SVG. O slider e o clique no gráfico movem o ponto nos dois painéis. A potência permanece no CSV como VDD × ID. O transistor M1 do CS é destacado em laranja, usando o mesmo símbolo MOS dos outros blocos.
 
 A faixa de comprimento inclui 0,13 µm para exploração conceitual: sua validade para cada dispositivo real deve ser verificada no PDK.
 
@@ -31,47 +31,33 @@ A faixa de comprimento inclui 0,13 µm para exploração conceitual: sua validad
 
 ## Espelho de corrente (razão 1:1)
 
-Segundo bloco, em `/#/espelho`, com o mesmo controle contínuo (gm/ID, gm fixo em 300 µS) e o mesmo seletor de L do fonte comum. O modelo vive em `src/mirrorModel.js` e reaproveita `operatingPoint`, de modo que largura, área e ganho intrínseco são exatamente os mesmos do primeiro experimento.
+Em `/#/espelho`, **I_ref = I_out = 20 µA fica fixa**, enquanto gm/ID e L escolhem a geometria. Não é mais uma comparação a gm fixo. `src/mirrorModel.js` alimenta três gráficos:
 
-M1 é diodo-conectado (gate preso ao dreno) e M2 é o transistor de saída; a razão é fixa em 1:1, então I_out = I_ref = g_m/(g_m/I_D). Os gráficos usam o mesmo eixo horizontal — gm/ID — com uma curva por L:
+- **Compliance mínima:** o mesmo critério de saturação de 99% usado no CS.
+- **Mismatch a área fixa:** σ(ΔI/I) ≈ (gm/ID)·A_VT/√A_ref, com A_ref = 1 µm² por transistor e A_VT = 0,5 mV·µm. É uma curva crescente de sensibilidade à diferença de thresholds, comum aos L. **Não é o mismatch da geometria redimensionada no gráfico de W.** O texto e o CSV mostram também essa segunda estimativa e a área calculada. Nesta lei ilustrativa, a 20 µA, W ∝ (gm/ID)² e a estimativa da geometria dimensionada fica plana. Não se força a tendência nem se alega reproduzir uma figura específica do livro.
+- **W necessária para 20 µA:** W = I_ref/(I_D/W), uma curva por L, sem painel de corrente.
 
-- **Mismatch** (`σ(ΔI_D/I_D) ≈ (g_m/I_D)·A_VT/√(W·L)`, em %): lei de Pelgrom com σ(ΔV_T) = A_VT/√(W·L) e **A_VT = 0,5 mV·µm**, um proxy didático, não uma extração de PDK. Como I_D ∝ V_OV² em saturação, σ(I_D)/I_D = 2·σ(ΔV_T)/V_OV; com V_OV = 2/(g_m/I_D) o fator 2 se cancela e sobra a expressão acima — por isso o erro cresce com o gm/ID e cai com a área. No modelo: 1,67% em L = 0,13 µm contra 0,22% em L = 1 µm (a g_m/I_D = 15), e a curva é monótona em todo o intervalo — mais eficiência significa menos corrente e mais mismatch. Só a parcela de mismatch entra no gráfico; o erro por modulação de canal (λ·V_DS) existe e entra em quadratura, mas neste modelo depende apenas de L e não variaria com o eixo do gráfico.
-- **Tensão de compliance mínima** (V): V_DS,out,mín ≈ 2/(g_m/I_D), igual à expressão de headroom do fonte comum e por isso independente de L — aparece como curva única. O texto abaixo do gráfico compara a compliance do ponto com o V_DS,out = 0,6 V assumido e mostra a folga restante, porque é o único número do bloco que precisa ser comparado com um valor fixo.
-- **W para a corrente pedida** (µm, log): a largura de **cada** transistor para a corrente de saída escolhida, uma curva por L, sem painel de corrente. É a leitura direta de W = I_out/(I_out/W): no modelo, W vai de 0,52 µm (g_m/I_D = 5, L = 0,13 µm) a 19,9 µm (g_m/I_D = 25, L = 1 µm). Inversão fraca entrega a mesma corrente com muito menos largura, ao custo de compliance e ganho.
-
-Os quatro gráficos do fonte comum continuam sendo ganho, headroom, fT e área × corrente. O espelho tem três: mismatch, compliance mínima e W. O gráfico de ganho em espelho (g_m·r_out) foi removido por repetir a curva de ganho do fonte comum com outros rótulos; o valor continua disponível no modelo e no CSV.
-
-O cartão "Ponto selecionado" resume corrente copiada, mismatch, **W necessária**, compliance mínima e a **folga de saída** (V_DS,out − V_DS,out,mín), que é a margem real antes de M2 sair de saturação. Quando o mismatch ultrapassa a meta didática de 1%, aparece um aviso laranja no lugar da seção de saturação do fonte comum. Exporta CSV próprio (`gmid-espelho-ilustrativo.csv`) e tem guia próprio. Efeito de corpo, razão k:1, mismatch de layout e a dependência de V_DS na saída não são modelados.
+A_VT usa a convenção de **diferença de thresholds do par**, igual à do offset do bloco diferencial. Não há fator √2 adicional. O erro sistemático devido a V_DS desigual, mismatch de fator de corrente e variações de layout não são incluídos. CSV: `gmid-espelho-ilustrativo.csv`.
 
 ## Carga ativa de um único transistor
 
-Terceiro bloco, em `/#/carga-ativa`: um NMOS (M1) com **um único PMOS** por cima, como carga, e C_L = 2 pF. Mesmo controle contínuo dos outros blocos (gm/ID, gm fixo em 300 µS) e mesmo seletor de L. O modelo vive em `src/activeLoadModel.js` e reaproveita `operatingPoint`.
+Em `/#/carga-ativa`, slider e seletor de L afetam **apenas o PMOS de carga**. O CS fica fixo em gm = 300 µS, gm/ID = 15 V⁻¹, L = 0,5 µm e I_D = 20 µA. A carga é redimensionada e V_bias reajustado a cada ponto; não é um sweep de tensão de um transistor de geometria fixa.
 
-A diferença para o fonte comum é o gate da carga. Ele está numa tensão de polarização fixa V_bias, separada do rail de V_DD, então **a sobrecondução da carga não acompanha o gₘ/Iᴅ da entrada**: é constante em 12 V⁻¹ neste modelo. Isso é a vantagem (dá para escolher o ponto da carga de forma independente) e a fragilidade (nada garante a corrente com PVT, ao contrário de um espelho).
+`src/activeLoadModel.js` oferece headroom exigido pela carga, ruído adicional referido à entrada e fT da carga. A corrente fixa faz gm_L crescer com seu gm/ID: ganha-se espaço de tensão ao custo de mais ruído térmico. O ruído adicional é √(4kTγ_p gm_L)/gm_1; a contribuição fixa da entrada soma em potência para obter o total, mostrado no texto/CSV. γ_n = γ_p = 2/3 é ilustrativo.
 
-Três gráficos, todos com gm/ID no eixo x:
-
-- **Headroom do par** (V): V_out ≥ V_OV,1 + V_OV,L ≈ 2/(g_m/I_D) + 0,167 V. É a mesma curva de headroom do fonte comum deslocada por uma constante, e o deslocamento é o preço de empilhar dois transistores. O swing é V_DD menos isso. Curva única, sem dependência de L.
-- **Ruído de entrada** (nV/√Hz): quant pela primeira vez aparece no laboratório. O par gera 4kTγ(g_m1 + g_mL) de corrente de ruído; referido à entrada, o r_out se cancela e resta um fator √(1 + g_mL/g_m1). Com carga ideal volta a ser √(4kTγ/g_m1) = 6,07 nV/√Hz (gm fixo); com a carga são 11,2 nV/√Hz em inversão forte e 7,4 em fraca. Curva única: nem L nem r_out entram, só a razão de g_m.
-- **fT do par** (GHz): min(f_T,entrada; f_T,carga). A fT da carga é fixa (a eficiência dela é fixa) e vira um piso; a da entrada cai com o gₘ/I_D. As quatro curvas de L mostram o cruzamento — em inversão forte a carga limita, em fraca a entrada assume, e abaixo do limite a curva achata.
-
-Ganho, V_A e fT vêm do mesmo modelo didático dos outros blocos. O ganho |Aᵥ| = g_m·(r_o1 ∥ r_o,L) fica abaixo de g_m/gds porque a saída vê as duas impedências ao mesmo tempo; ele aparece no cartão de ponto mas não tem gráfico próprio, porque repetiria a curva de ganho do fonte comum com outro rótulo.
-
-O cartão resume headroom do par, swing, ruído, fT do par e ganho. O guia chama de forma explícita o que o modelo não cobre: só ruído térmico de canal (γ = 2/3, T = 300,15 K), sem 1/f, sem ruído da fonte de bias e sem ruído da carga externa; V_bias é um ponto DC assumido, sem variação de PVT nem efeito de corpo.
+Não há mais “fT do par = min(fT)”: fT é uma característica do dispositivo, não a banda do estágio. O intervalo de saída é [V_DS,min,n; V_DD − V_SD,min,p], sem alegar amplitude de sinal garantida. Dados PMOS de densidade/capacitância ainda são proxies compartilhados com NMOS; não representam a diferença de mobilidade de um PDK real.
 
 ## Par diferencial (com espelho de carga e cauda)
 
-Quarto e último bloco, em `/#/par-diferencial`. Cinco transistores: M1/M2 são o par de entrada, M3/M4 o espelho de carga PMOS com M3 diodo-conectado, e M5 a fonte de cauda. Mesmo controle contínuo dos outros três (gm/ID, gm fixo em 300 µS) e mesmo seletor de L. O modelo vive em `src/differentialModel.js`.
+Em `/#/par-diferencial`, há seis gráficos: **ganho intrínseco, ruído, linearidade, mismatch, fT da entrada e área × corrente**, todos contra gm/ID de **M1/M2**, destacados em laranja no circuito. I_D = 20 µA **por ramo** e I_cauda = 40 µA ficam fixos, enquanto gm_1,2 = (gm/ID)_in·I_D varia de 100 a 500 µS. L seleciona apenas as entradas. Cargas (gm = 240 µS e L = 1 µm) e cauda não variam com o slider. CMRR e ICMR não participam da seleção.
 
-O que interessa aqui não é o ganho, e sim o que só o par tem. Três gráficos, todos com gm/ID no eixo x:
+- **Ganho intrínseco:** gm/gds de cada transistor de entrada, como no CS com carga ideal. Não é o ganho do estágio com espelho.
 
-- **Rejeição de modo comum** (dB): CMRR = 2·g_m·r_tail = **2·(g_m/I_D)·V_A,cauda**. A corrente se cancela: como r_tail = V_A/I e g_m = (g_m/I_D)·I, mudar o gm/ID mexe em I_D e em r_tail na mesma proporção. O resultado é que o CMRR depende só da eficiência e do comprimento da cauda — nunca da corrente. No modelo vai de 38 dB (L = 0,13 µm, g_m/I_D = 5) a 61 dB (L = 1 µm, g_m/I_D = 25), e **satura**: o teto de 1 µm faz L = 0,5 e L = 1 terem a mesma cauda.
-- **Faixa de modo comum** (V): ICMR = V_DD − V_OV,carga − V_OV,cauda − V_OV,1. Embaixo a sobrecondução da cauda somada à do par, em cima o que a carga deixa. Curva única, de 0,47 V a 0,79 V: inversão mais fraca abre a faixa.
-- **Offset por mismatch** (mV): σ(V_os) = A_VT/√(2·W·L). O √2 vem de somar duas variâncias — num par, as duas áreas não casam de verdade. É o limite prático do circuito: 1,36 mV em L = 0,13 µm contra 0,08 mV em L = 1 µm. É por isso que par diferencial quase nunca usa a largura mínima.
-
-O ganho diferencial |A_vd| = g_m·(r_o1 ∥ r_o4) fica no cartão de ponto, sem gráfico: em meio-circuito diferencial o dreno de M2 é um terra virtual e não carrega a saída, então o resultado é o mesmo do fonte comum com a mesma carga — repetir a curva não acrescentaria nada.
-
-Cauda e espelho são polarizados por tensão, com g_m/I_D fixo em 12 V⁻¹, e usam L = min(1 µm, 2·L), porque r_o da cauda limita a rejeição e r_o da carga limita o ganho. O CMRR mostrado é o ideal de cauda perfeita: não inclui a degradação por mismatch nem pelo ruído da própria fonte de cauda, que é o que costuma dominá-lo em silício — o guia diz isso na letra miúda.
+- **Linearidade:** amplitude diferencial de pico para HD3 ≤ −60 dBc. Proxy simétrico inspirado no EKV, com cauda ideal. A expansão I_diff = gm·v + a3·v³ dá a3/gm = g3/(24gm) − (g2/gm)²/8, incluindo o deslocamento da fonte comum. A amplitude estimada é √(4·10⁻³/|a3/gm|). Não há sweep de amplitude na UI, nem simulação harmônica do espelho. Teste independente confere os harmônicos da transferência do proxy.
+- **Ruído:** exatamente a PSD diferencial do par de entrada, S_v = overline(v_in,diff²)/Δf = 8kTγ_n/gm_1,2 = 8kTγ_n/[(gm/ID)_in·I_D1,2], γ_n = 2/3 e T = 300,15 K. Sem multiplicador de carga: não inclui PMOS, cauda ou 1/f. A expressão está em **V²/Hz**, o eixo em **nV²/Hz** (fator 10¹⁸); a raiz em nV/√Hz é apenas leitura complementar no texto e CSV. A corrente fixa torna a PSD decrescente com gm/ID; isso não é a comparação anterior a gm fixo.
+- **fT da entrada:** valor por dispositivo, nunca banda do par/OTA.
+- **Mismatch de entrada:** expresso como offset σ(V_OS) = A_VT/√(WL), em mV, não erro percentual de corrente. A_VT é definido para a diferença de thresholds, sem √2 adicional. Só o mismatch de threshold das entradas; não inclui cargas/cauda.
+- **Área × corrente para gm dado:** comparação de referência **separada**, a gm_1,2 = 300 µS, com gm/ID no eixo x. Acima, área de gate 2WL recalculada para esse gm; abaixo, corrente de cauda de referência 2gm/(gm/ID), de 120 a 24 µA. Os outros cinco gráficos e o circuito permanecem a **20 µA por ramo/40 µA de cauda**. Texto, cartão e CSV distinguem área/corrente da comparação das grandezas do ponto real de seleção; fora de gm/ID = 15 elas diferem. A área não inclui cargas/cauda ou layout. A fT usa a mesma altura de SVG para alinhar a última linha.
 
 ## Ruído
 
@@ -83,12 +69,23 @@ Os botões abaixo do laboratório abrem páginas próprias com seis etapas e pip
 
 - `/#/exemplos/fluxo-basico`: **fluxo básico de Murmann** começando de uma especificação real (receptor óptico: A0 ≥ 50, banda ≥ 1 MHz, C_L = 2 pF). Deriva g_m, escolhe L e gm/ID pelos gráficos, lê ID/W e calcula I_D e W. Aliases antigos: `ganho-por-banda` e `sinal-lento`.
 - `/#/exemplos/sinal-rapido`, `/corrente-limitada` e `/baixo-ruido`: **temporariamente desabilitados** (`disabled: true` em `src/methodology.js`). Os cartões aparecem como "EM BREVE", a rota direta mostra um aviso e a navegação "outros exemplos" os lista sem link. O solucionador e os testes desses fluxos continuam intactos para reativação futura.
+- `/#/exemplos/espelho-mismatch`, `/carga-ativa-ganho` e `/par-diferencial-fluxo`: **um guia por bloco de seleção**, com cinco etapas cada, adaptados de três exemplos do livro — Ex. 4.7 (mismatch em espelho de corrente), Ex. 3.8 (CS com carga ativa) e Ex. 3.11/3.12 (par diferencial). Abrem pelo link "Ver exemplo guiado" no cabeçalho do laboratório correspondente e pela seção "Exemplos guiados dos outros blocos" na página do fonte comum.
 
 As rotas por hash permitem abrir/recarregar cada página e usar voltar/avançar do navegador em hospedagem estática, sem configurar fallback de servidor. Não há backend, simulador ou persistência dos dimensionamentos entre páginas.
 
+### Um exemplo por bloco (guias 5 a 7)
+
+`src/blockExamples.js` guarda os dados (referência do livro, condições, etapas, textos) e as funções puras de cada guia; `src/BlockGuidePage.jsx` é a casca compartilhada, que troca apenas o conteúdo da etapa. Cada página tem pipeline fixa, uma única etapa de escolha (um slider de gm/ID e um seletor discreto de L, como nos laboratórios) e uma checklist lateral própria do bloco.
+
+- **Espelho** (`espelho-mismatch`): objetivo → gm/ID e L → geometria (`W = I_ref/(ID/W)`) → mismatch → verificação. Segue o Ex. 4.7 e soma **dois** termos em variância, `σ² ≈ [(gm/ID)·A_VT/√(WL)]² + [A_β/√(WL)]²`, com A_VT = 0,5 mV·µm e A_β = 1%·µm. Nas áreas pequenas deste modelo (20 µA) o termo Δβ **não é** desprezível, ao contrário do exemplo do livro, que usa W/L maior; a página diz isso explicitamente.
+- **Carga ativa** (`carga-ativa-ganho`): objetivo → gm/ID e L da carga → ganho → ruído da carga → verificação. Segue o Ex. 3.8, compara `A_v0 = gm₁/(gds₁+gds₂)` com o CS de fonte ideal e reporta a fração perdida (> 40% no livro). No modelo ilustrativo `gds/ID` depende sobretudo de **L**, não do gm/ID, então o deslizante troca faixa de saída por ruído adicional e é o comprimento que recupera ganho — a decisão e os textos refletem isso, sem alegar um ganho que o modelo não produz.
+- **Par diferencial** (`par-diferencial-fluxo`): objetivo → gm/ID e L → geometria → desempenho → verificação. Segue os Ex. 3.11/3.12 com I_D = 20 µA por ramo e cauda de 40 µA fixas. Desempenho cobre ganho intrínseco, ruído diferencial (só o par de entrada), offset 1σ e amplitude linear para HD3 ≤ −60 dBc, exatamente como o laboratório.
+
+Todas as fórmulas são KaTeX e todos os valores vêm das **mesmas funções de modelo** dos laboratórios (`mirrorPoint`, `activeLoadPoint`, `differentialPoint`), então guia e laboratório nunca discordam. As curvas continuam ilustrativas e **não** extraídas do PDK IHP SG13G2.
+
 ### Checklist lateral
 
-`src/TransistorChecklist.jsx` exibe L, gm/ID, I_D e W como parcelas fechadas ou pendentes. O fluxo básico preenche cada parcela quando a etapa correspondente é confirmada; os guias 2–4 preenchem ao escolher o ponto e ao escalar a geometria. `useGuideHeader` publica a altura do cabeçalho fixo em `--guide-header-height`, usada para posicionar a checklist e para rolar a etapa ativa sem escondê-la atrás do cabeçalho ou da faixa da checklist no mobile. Alterar L ou gm/ID no fluxo básico zera as etapas dependentes, evitando inconsistência entre a checklist e os cálculos.
+`src/TransistorChecklist.jsx` exibe L, gm/ID, I_D e W como parcelas fechadas ou pendentes. O fluxo básico preenche cada parcela quando a etapa correspondente é confirmada; os guias 2–4 preenchem ao escolher o ponto e ao escalar a geometria. Os guias de bloco passam `items` próprios para renomear as parcelas (M₁/M₂, carga PMOS, par de entrada) sem duplicar o componente. `useGuideHeader` publica a altura do cabeçalho fixo em `--guide-header-height`, usada para posicionar a checklist e para rolar a etapa ativa sem escondê-la atrás do cabeçalho ou da faixa da checklist no mobile. Alterar L ou gm/ID no fluxo básico zera as etapas dependentes, evitando inconsistência entre a checklist e os cálculos.
 
 ### Fórmulas em notação matemática
 
@@ -152,6 +149,8 @@ Para e = gm/ID, GL = 1/RL e VA = (gm/gds)/e, em unidades SI:
 A última desigualdade pode impor limite inferior **ou superior** de ID; intervalos vazios são descartados. Para minimizar corrente/área por ponto, usa-se a menor corrente admissível. Área é apenas W·L do NMOS; corrente/potência refere-se ao ramo, não ao sistema completo.
 
 ## Arquitetura da interface
+
+`SelectionLabPage.jsx` mantém os três labs de seleção (espelho, carga e diferencial): gráficos, fórmulas KaTeX, cartões, hipóteses, guia e CSV derivam da mesma configuração; cada configuração aponta o guia do bloco em `exampleSlug`. `blockExamples.js` guarda os três guias de bloco e `BlockGuidePage.jsx` os renderiza sobre uma casca comum. `selectionPhysics.js` contém os proxies independentes de saturação/linearidade, com testes de corrente reversa e integração de harmônicos. `CircuitSchematics.jsx` mantém os símbolos MOS com seta no source e as topologias; não foi necessário alterar os diagramas nesta revisão das avaliações.
 
 `src/labUi.jsx` concentra o que os quatro blocos compartilham: o gráfico de curva única por métrica (`LabChart`, com `evaluate(gm/ID, L)` injetado), o slider de gm/ID, o seletor de comprimento, o cartão de métrica e o diálogo modal com armadilha de foco. `src/LabShell.jsx` desenha menu lateral e barra superior, marcando o bloco ativo e navegando por hash. `TradeoffChart.jsx` (antes `AreaCurrentChart.jsx`) desenha a grandeza por L em escala log e, por padrão, um segundo painel com a corrente: recebe `evaluate`, as chaves, os rótulos e a faixa logarítmica por props, então o mesmo componente serve à área de gate do fonte comum (dois painéis) e à largura do espelho (`showCurrent={false}`, um painel só).
 

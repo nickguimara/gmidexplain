@@ -5,29 +5,20 @@ import { designPoint, LENGTHS, COLORS, METRICS, BIAS } from './model';
 import TradeoffChart from './TradeoffChart';
 import ExampleLinks from './ExampleLinks';
 import LabShell from './LabShell';
+import MathFormula from './MathFormula';
+import { CommonSourceSchematic as Schematic } from './CircuitSchematics';
 import { EfficiencyControl, LabChart, LabDialog, LengthSelector, Metric, fmt } from './labUi';
 import { EXAMPLES } from './methodology';
+import { BLOCK_EXAMPLES } from './blockExamples';
 import './styles.css';
 import './examples.css';
 
 const MethodologyPage = lazy(() => import('./MethodologyPage'));
 const BasicGuidePage = lazy(() => import('./BasicGuidePage'));
+const BlockGuidePage = lazy(() => import('./BlockGuidePage'));
 const CurrentMirrorPage = lazy(() => import('./CurrentMirrorPage'));
 const ActiveLoadPage = lazy(() => import('./ActiveLoadPage'));
 const DifferentialPage = lazy(() => import('./DifferentialPage'));
-
-function Schematic({ current, vds }) {
-  return <svg className="schematic" viewBox="0 0 260 215" role="img" aria-label="Circuito fonte comum NMOS com fonte de corrente ideal no dreno, entrada no gate e saída no dreno">
-    <g fill="none" stroke="#42536b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M145 25v15M145 80v38M145 96h53M145 118h-17v43h17v24M118 120v39M118 140H57M145 185v8M133 193h24M137 198h16M141 203h8" />
-      <circle cx="145" cy="60" r="20" /><path d="M145 48v24m-5-6 5 6 5-6" />
-      <path d="M139 153h-10m4-4-4 4 4 4" />
-      <circle cx="145" cy="96" r="3" fill="#42536b" /><circle cx="57" cy="140" r="3" fill="#fff" /><circle cx="198" cy="96" r="3" fill="#fff" />
-      <path d="M134 25h22" />
-    </g>
-    <g fontFamily="inherit" fontSize="11" fill="#728096"><text x="128" y="16">Vᴅᴅ = 1,2 V</text><text x="174" y="57">Iᴅ = {fmt(current)} µA</text><text x="174" y="73" fontSize="9">fonte ideal</text><text x="32" y="130" fill="#df7037">vᵢₙ</text><text x="199" y="83" fill="#df7037">vₒᵤₜ</text><text x="158" y="145" fill="#344b65">M₁</text><text x="17" y="183">Vᴅs = {fmt(vds, 2)} V</text></g>
-  </svg>;
-}
 
 function CommonSourcePage() {
   const [efficiency, setEfficiency] = useState(15);
@@ -39,7 +30,7 @@ function CommonSourcePage() {
   const regime = efficiency < 10 ? 'Inversão forte' : efficiency <= 20 ? 'Inversão moderada' : 'Inversão fraca';
   function reset() { setEfficiency(15); setLength(.5); }
   function exportCSV() {
-    const rows = ['# Modelo ilustrativo; NAO sao dados do PDK IHP SG13G2; carga ideal; gm fixo 300 uS; area de gate nao inclui layout; headroom NMOS aproximado por 2/(gm/ID)', 'gm_id_V-1,L_um,ID_uA,VDS_V,gm_uS,W_um,gate_area_um2,power_uW,headroom_V,gm_gds,ft_GHz,gain_magnitude_V_V'];
+    const rows = ['# Modelo ilustrativo; NAO sao dados do PDK IHP SG13G2; carga ideal; gm fixo 300 uS; area de gate nao inclui layout; VDSmin por criterio de 99% da corrente direta (proxy EKV)', 'gm_id_V-1,L_um,ID_uA,VDS_V,gm_uS,W_um,gate_area_um2,power_uW,VDSmin_99pct_V,gm_gds,ft_GHz,gain_magnitude_V_V'];
     LENGTHS.forEach(l => { for (let i = 0; i <= 100; i++) { const e = 5 + i * .2, p = designPoint(e, l); rows.push([e, l, p.current, vds, p.gm, p.width, p.area, p.power, p.headroom, p.intrinsicGain, p.ft, p.gain].join(',')); } });
     const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a'); a.href = url; a.download = 'gmid-cs-ilustrativo.csv'; a.click(); URL.revokeObjectURL(url);
@@ -52,13 +43,16 @@ function CommonSourcePage() {
         <LengthSelector {...{ length, setLength }} />
       </div>
       <div className="plots-full"><div className="plots-grid">{Object.entries(METRICS).map(([metric, config]) => <section className={`card plot-card plot-${metric}`} key={metric}>
-        <div className="plot-header"><h2>{config.title}</h2>{config.symbol && <span className="plot-symbol">{config.symbol}</span>}</div>
-        <div className="regime-labels"><span>FORTE</span><span>MODERADA</span><span>FRACA</span></div>
+        <div className="plot-header"><h2>{config.title}</h2>{config.symbol && <span className="plot-symbol">{metric === 'headroom' ? <MathFormula inline latex={String.raw`I_D/I_F=99\%`} /> : config.symbol}</span>}</div>
+        {metric === 'areaCurrent'
+          ? <div className="tradeoff-context">Comparação a gm = 300 µS · η = gm/ID</div>
+          : <div className="regime-labels"><span>FORTE</span><span>MODERADA</span><span>FRACA</span></div>}
         {metric === 'areaCurrent' ? <TradeoffChart {...{ efficiency, setEfficiency, length }} /> : <LabChart id={`cs-${metric}`} config={config} evaluate={(e, l) => designPoint(e, l)[metric]} tall={metric === 'ft'} {...{ efficiency, setEfficiency, length }} />}
-        {metric === 'headroom' && <p className="headroom-definition">Headroom é a tensão mínima que o transistor precisa entre dreno e fonte para operar em saturação, região em que queremos usá-lo como amplificador.</p>}
+        {metric === 'headroom' && <p className="headroom-definition">Tensão mínima estimada pelo critério operacional de 99% da corrente direta: a componente reversa fica em até 1%. Proxy inspirado no EKV, sem extração do PDK; não é a regra 2/(gm/ID), nem swing. Curva comum aos L porque este proxy ignora a dependência de saturação com L.</p>}
+        {metric === 'areaCurrent' && <p className="headroom-definition">gm = 300 µS fixo, com gm/ID no eixo x dos dois painéis. Acima, área de gate (log) por L; abaixo, corrente de dreno (linear), igual para todos os L. Neste ponto: {fmt(point.current, 1)} µA e {fmt(point.area, 3)} µm². Clique para selecionar gm/ID.</p>}
       </section>)}
-        <section className="card operating-card summary-card"><div className="operating-top"><h2>Ponto selecionado</h2><span className="selected-length" style={{ color: COLORS[LENGTHS.indexOf(length)] }}>L = {fmt(length, 2)} µm</span></div><div className="metrics-grid"><Metric label="GANHO" symbol="|Aᵥ|" value={fmt(point.gain)} unit="V/V" /><Metric label="HEADROOM NMOS" symbol="Vᴅs,sat ≈" value={fmt(point.headroom, 3)} unit="V" /><Metric label="ÁREA" symbol="W·L" value={fmt(point.area, 2)} unit="µm²" /><Metric label="CORRENTE" symbol="Iᴅ" value={fmt(point.current)} unit="µA" /></div></section></div></div>
-      {!point.saturated && <div className="warning"><Info size={17} /> Atenção: Vᴅs &lt; 2/(gₘ/Iᴅ). Pela aproximação didática, a saturação não está garantida; não use os ganhos exibidos como previsão física.</div>}
+        <section className="card operating-card summary-card"><div className="operating-top"><h2>Ponto selecionado</h2><span className="selected-length" style={{ color: COLORS[LENGTHS.indexOf(length)] }}>L = {fmt(length, 2)} µm</span></div><div className="metrics-grid"><Metric label="GANHO" symbol="|Aᵥ|" value={fmt(point.gain)} unit="V/V" /><Metric label="SATURAÇÃO MÍNIMA (99%)" symbol={<MathFormula inline latex={String.raw`V_{DS,\min}\approx`} />} value={fmt(point.headroom, 3)} unit="V" /><Metric label="ÁREA" symbol="W·L" value={fmt(point.area, 2)} unit="µm²" /><Metric label="CORRENTE" symbol="Iᴅ" value={fmt(point.current)} unit="µA" /></div></section></div></div>
+      {!point.saturated && <div className="warning"><Info size={17} /> V_DS abaixo da tensão mínima estimada pelo critério de 99%. Não use os ganhos como previsão física neste ponto.</div>}
       <ExampleLinks />
       <footer><span>Modelo didático · Não validado para fabricação</span></footer>
     </LabShell>
@@ -68,12 +62,12 @@ function CommonSourcePage() {
         <ol>
           <li><strong>O gₘ fica fixo em 300 µS.</strong> Comparamos projetos de mesma transcondutância, em Vᴅs = 0,6 V. A corrente é Iᴅ = gₘ/(gₘ/Iᴅ).</li>
           <li><strong>Mova o gₘ/Iᴅ.</strong> Observe ganho, headroom, fT e o compromisso área × corrente. Mais eficiência exige menos corrente, mas maior área.</li>
-          <li><strong>Headroom é tensão necessária, não swing.</strong> Aqui é a tensão mínima dreno–fonte estimada para manter o NMOS em saturação: Vᴅs,sat ≈ 2/(gₘ/Iᴅ). Quanto menor, menos tensão o transistor exige. Não é a excursão de sinal nem o Vᴅs de polarização.</li>
+          <li><strong>Tensão mínima de saturação.</strong> A estimativa usa um proxy inspirado no EKV com corrente reversa de até 1% da direta. Não é uma tensão extraída do PDK, não é swing e não é universalmente igual a 2/(gm/ID).</li>
           <li><strong>Compare as cores.</strong> Cada curva corresponde a um L, anotado no gráfico. O headroom não depende de L nesta aproximação; por isso aparece uma única curva.</li>
           <li><strong>Relacione os compromissos.</strong> Mais ganho e eficiência geralmente custam área e velocidade.</li>
         </ol>
-        <div className="formula">Iᴅ = gₘ / (gₘ/Iᴅ)<br />Área de gate = W·L<br />Aᵥ ≈ −gₘrₒ = −gₘ/gds<br />Headroom NMOS ≈ 2/(gₘ/Iᴅ)</div>
-        <p className="modal-fine">A aproximação 2/(gₘ/Iᴅ) é didática, não uma extração de Vᴅs,sat do PDK; especialmente em inversão fraca, a relação física não segue simplesmente essa expressão. A carga ideal tem resistência incremental infinita e não exige headroom adicional; uma carga real exigiria. O limite superior Vᴅᴅ é uma convenção do circuito alimentado. A área é apenas W·L do NMOS, sem layout ou implementação da carga; seu eixo é logarítmico. A corrente indica consumo: PDC = Vᴅᴅ·Iᴅ. Vᴅs é um ponto DC assumido, não determinado pela fonte ideal. fT não é a largura de banda do amplificador.</p>
+        <MathFormula latex={String.raw`I_D=\frac{g_m}{g_m/I_D},\quad A_g=WL,\quad |A_v|=\frac{g_m}{g_{ds}},\quad I_D/I_F=99\%`} />
+        <p className="modal-fine">A tensão mínima depende do critério de saturação adotado. Aqui usamos 99% da corrente direta num proxy sem canal curto, não LUTs de SPICE. A densidade e as capacitâncias continuam analíticas e ilustrativas. A carga ideal não exige tensão adicional. A área é só W·L do NMOS. V_DS é um ponto DC assumido e fT não é banda do amplificador.</p>
       </> : modal === 'data' ? <>
         <p>O IHP SG13G2 é a tecnologia de referência deste laboratório. <strong>As curvas atuais não foram extraídas do PDK.</strong></p>
         <p>Esta versão usa relações analíticas simplificadas, inspiradas no conceito de inversão do EKV, com normalizações ilustrativas. Efeitos de canal curto, capacitâncias parasitas completas e dependência física de temperatura não são modelados.</p>
@@ -95,6 +89,8 @@ function Router() {
   const example = EXAMPLES.find(item => route === `/exemplos/${item.slug}` || item.aliases?.some(alias => route === `/exemplos/${alias}`));
   if (example?.disabled) return <div className="guide-page"><main className="guide-main"><h1>Exemplo em breve</h1><p>Este exemplo está temporariamente desabilitado. Por enquanto, explore o fluxo básico.</p><a className="primary-button" href="#/">Voltar ao laboratório</a></main></div>;
   if (example) return <Suspense fallback={<div className="worksheet-loading" role="status">Abrindo exemplo…</div>}>{example.flow === 'basic' ? <BasicGuidePage key={example.slug} example={example} /> : <MethodologyPage key={example.slug} example={example} />}</Suspense>;
+  const blockExample = BLOCK_EXAMPLES.find(item => route === `/exemplos/${item.slug}`);
+  if (blockExample) return <Suspense fallback={<div className="worksheet-loading" role="status">Abrindo exemplo…</div>}><BlockGuidePage key={blockExample.slug} example={blockExample} /></Suspense>;
   if (route === '/espelho') return <Suspense fallback={<div className="worksheet-loading" role="status">Abrindo o espelho de corrente…</div>}><CurrentMirrorPage /></Suspense>;
   if (route === '/carga-ativa') return <Suspense fallback={<div className="worksheet-loading" role="status">Abrindo a carga ativa…</div>}><ActiveLoadPage /></Suspense>;
   if (route === '/par-diferencial') return <Suspense fallback={<div className="worksheet-loading" role="status">Abrindo o par diferencial…</div>}><DifferentialPage /></Suspense>;

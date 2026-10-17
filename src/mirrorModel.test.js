@@ -1,82 +1,63 @@
-import { describe, it } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BIAS, LENGTHS } from './model.js';
+import { LENGTHS } from './model.js';
 import { MIRROR, mirrorPoint } from './mirrorModel.js';
+import { minimumSaturationVoltage } from './selectionPhysics.js';
 
-describe('espelho de corrente 1:1', () => {
-  it('mantém I_out = I_ref na razão 1:1 e deriva a corrente do gm/ID', () => {
-    assert.equal(mirrorPoint(15, 0.5).outCurrent, BIAS.gm / 15);
-    assert.equal(mirrorPoint(15, 0.5).refCurrent, 20);
-    assert.equal(mirrorPoint(5, 0.5).outCurrent, 60);
-  });
+test('espelho compara a mesma corrente, não o mesmo gm', () => {
+  for (const l of LENGTHS) for (const eta of [5, 10, 15, 20, 25]) {
+    const p = mirrorPoint(eta, l);
+    assert.equal(p.current, MIRROR.current);
+    assert.equal(p.refCurrent, MIRROR.current);
+    assert.equal(p.outCurrent, MIRROR.current);
+    assert.equal(p.gm, eta * MIRROR.current);
+    assert.equal(p.width, MIRROR.current / p.density);
+    assert.equal(p.pairArea, 2 * p.width * l);
+  }
+});
 
-  it('usa a compliance didática 2/(gm/ID) e nada de L', () => {
-    LENGTHS.forEach(l => {
-      const point = mirrorPoint(15, l);
-      assert.ok(Math.abs(point.vMinOut - 2 / 15) < 1e-12);
-      assert.ok(Math.abs(point.vMaxOut - BIAS.vdd) < 1e-12);
-      assert.ok(Math.abs(point.swing - (BIAS.vdd - 2 / 15)) < 1e-12);
-    });
-    assert.ok(mirrorPoint(10, 0.5).vMinOut > mirrorPoint(20, 0.5).vMinOut);
-  });
+test('compliance do espelho usa o mesmo critério explícito do CS', () => {
+  for (const l of LENGTHS) for (const eta of [5, 15, 25]) {
+    const p = mirrorPoint(eta, l);
+    assert.equal(p.vMinOut, minimumSaturationVoltage(eta));
+    assert(p.compliant);
+  }
+});
 
-  it('aplica a lei de Pelgrom ao erro por mismatch', () => {
-    const point = mirrorPoint(15, 0.5);
-    assert.ok(Math.abs(point.sigma - MIRROR.mismatchK / Math.sqrt(point.area)) < 1e-12);
-    assert.ok(Math.abs(point.error - point.sigma * 15) < 1e-12);
-    assert.ok(Math.abs(point.errorPercent - point.error * 100) < 1e-12);
-  });
+test('mismatch usa a convenção de diferença de thresholds do par', () => {
+  for (const l of LENGTHS) for (const eta of [5, 15, 25]) {
+    const p = mirrorPoint(eta, l);
+    assert.equal(p.sigma, MIRROR.mismatchK / Math.sqrt(p.area));
+    assert.equal(p.errorPercent, eta * p.sigma * 100);
+    assert.equal(p.sigmaBeta, MIRROR.mismatchBeta / Math.sqrt(p.area));
+    assert.equal(p.sigmaTotal, Math.hypot(p.error, p.sigmaBeta));
+    assert.equal(p.sigmaTotalPercent, p.sigmaTotal * 100);
+    assert.equal(p.precise, p.sigmaTotalPercent <= MIRROR.errorTarget);
+  }
+});
 
-  it('cresce monotonicamente com o gm/ID, sem o artefato de densidade', () => {
-    // Regressão: com o fator de inversão antigo, J_D ia a zero em inversão
-    // fraca, W explodia e Pelgrom "melhorava" — a curva tinha um teto e caía.
-    LENGTHS.forEach(l => {
-      let previous = -1;
-      for (let i = 0; i <= 200; i++) {
-        const error = mirrorPoint(5 + i * .1, l).error;
-        assert(error > previous, `mismatch deve crescer com o gₘ/Iᴅ em L = ${l}`);
-        previous = error;
-      }
-    });
-    // e a largura também, para qualquer gₘ/Iᴅ
-    LENGTHS.forEach(l => {
-      let previous = -1;
-      for (let i = 0; i <= 200; i++) {
-        const width = mirrorPoint(5 + i * .1, l).width;
-        assert(width > previous, `W deve crescer com o gₘ/Iᴅ em L = ${l}`);
-        previous = width;
-      }
-    });
-  });
+test('não força tendência de mismatch: com esta lei de W o resultado é plano', () => {
+  for (const l of LENGTHS) {
+    const initial = mirrorPoint(5, l);
+    for (let i = 0; i <= 100; i++) {
+      const eta = 5 + i * .2, p = mirrorPoint(eta, l);
+      assert(Math.abs(p.error - initial.error) < 1e-12);
+      assert(Math.abs(p.width / initial.width - (eta / 5) ** 2) < 1e-10);
+    }
+  }
+  assert(mirrorPoint(15, 1).error < mirrorPoint(15, .13).error);
+});
 
-  it('melhora a cópia com L maior, para o mesmo gm/ID', () => {
-    const errors = LENGTHS.map(l => mirrorPoint(15, l).error);
-    errors.forEach((value, i) => { if (i) assert.ok(value < errors[i - 1], `L = ${LENGTHS[i]} deve errar menos`); });
-    assert.ok(mirrorPoint(15, LENGTHS.at(-1)).precise);
-  });
-
-  it('exige mais área quando o gm/ID é mais fraco para bater a meta de erro', () => {
-    const point = mirrorPoint(15, 0.5);
-    assert.ok(Math.abs(point.areaForError - (MIRROR.mismatchK * 15 / 0.01) ** 2) < 1e-9);
-    assert.ok(mirrorPoint(20, 0.5).areaForError > mirrorPoint(10, 0.5).areaForError);
-    assert.ok(mirrorPoint(15, 0.5).precise);
-    assert.ok(!mirrorPoint(15, 0.13).precise);
-  });
-
-  it('conta a área dos dois transistores do par', () => {
-    const point = mirrorPoint(15, 0.5);
-    assert.ok(Math.abs(point.pairArea - 2 * point.width * 0.5) < 1e-12);
-  });
-
-  it('mantém o ganho didático do par igual a (gₘ/Iᴅ)·V_A', () => {
-    const point = mirrorPoint(15, 0.5);
-    assert.ok(Math.abs(point.gain - 15 * (3 + 0.5 * 19)) < 1e-9);
-    assert.ok(mirrorPoint(15, 1).gain > mirrorPoint(15, 0.13).gain);
-  });
-
-  it('considera o par sempre conforme em V_DS de saída = 0,6 V', () => {
-    LENGTHS.forEach(l => [5, 10, 15, 20, 25].forEach(e => {
-      assert.ok(mirrorPoint(e, l).compliant, `gₘ/Iᴅ ${e}, L ${l}`);
-    }));
-  });
+test('gráfico a área fixa cresce com gm/ID sem se confundir com a área dimensionada', () => {
+  for (const l of LENGTHS) {
+    let previous = 0;
+    for (const eta of [5, 10, 15, 20, 25]) {
+      const p = mirrorPoint(eta, l);
+      const expected = eta * MIRROR.mismatchK / Math.sqrt(MIRROR.mismatchReferenceArea) * 100;
+      assert.equal(p.referenceMismatchPercent, expected);
+      assert(p.referenceMismatchPercent > previous);
+      assert.equal(p.referenceMismatchPercent, mirrorPoint(eta, .13).referenceMismatchPercent);
+      previous = p.referenceMismatchPercent;
+    }
+  }
 });
