@@ -13,29 +13,36 @@ const DEFINITIONS = {
   gain: 'É o mesmo limite gₘ·r_out do fonte comum, agora impostos pelo transistor de saída do espelho. Com o gₘ/Iᴅ fixo, a corrente não muda: um L maior compra ganho e precisão pagando só em área.',
 };
 
+// Mesmo símbolo do fonte comum: transistor com seta interna, barra de gate à
+// esquerda e fonte em zigue-zague até o terra. Só muda o arranjo dos dois ramos.
 function MirrorSchematic({ current, vds }) {
-  return <svg className="schematic" viewBox="0 0 300 176" role="img" aria-label="Espelho de corrente NMOS com razão 1:1. M1 tem o dreno ligado ao próprio gate e recebe a corrente de referência; M2 copia essa corrente para o nó de saída. Ambas as fontes estão ligadas ao mesmo nó de massa.">
+  return <svg className="schematic" viewBox="0 0 290 212" role="img" aria-label="Espelho de corrente NMOS com razão 1:1. M1 tem o dreno ligado ao próprio gate e recebe a corrente de referência de uma fonte de corrente ideal; M2 copia essa corrente para o nó de saída. Ambas as fontes estão ligadas à massa.">
     <g fill="none" stroke="#42536b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M30 26h240M120 26v62M210 26v62" />
-      <circle cx="120" cy="108" r="20" /><circle cx="210" cy="108" r="20" />
-      <path d="M120 96v20m-5-6 5 6 5-6M210 96v20m-5-6 5 6 5-6" />
-      <path d="M120 128v22M210 128v22M120 150h90" />
-      <path d="M165 150v12M152 162h26M157 167h16M162 172h6" />
-      <path d="M120 70H85v38h105" />
-      <path d="M210 60h48" />
-      <circle cx="120" cy="70" r="3" fill="#42536b" /><circle cx="210" cy="60" r="3" fill="#fff" />
-      <path d="M109 14h22" />
+      <path d="M88 22h157" />
+      {/* M1 diodo-conectado, alimentado pela fonte de referência ideal */}
+      <path d="M110 22v10" /><circle cx="110" cy="52" r="20" />
+      <path d="M110 40v24m-5-6 5 6 5-6" />
+      <path d="M110 72v38M110 110h-17v43h17v24M110 177v8M98 185h24M102 190h16M106 195h8" />
+      <path d="M104 145h-10m4-4-4 4 4 4" />
+      <path d="M83 112v39" />
+      {/* M2, ramo de saída com dreno em V_DD e tap v_out */}
+      <path d="M195 22v50M195 72v38M195 110h-17v43h17v24M195 177v8M183 185h24M187 190h16M191 195h8" />
+      <path d="M189 145h-10m4-4-4 4 4 4" />
+      <path d="M168 112v39M195 86h45" />
+      {/* gates ligados entre si e ao dreno de M1 */}
+      <path d="M83 132H56V104H168V132" />
+      <circle cx="110" cy="104" r="3" fill="#42536b" /><circle cx="195" cy="86" r="3" fill="#fff" />
+      <path d="M96 22h22" />
     </g>
     <g fontFamily="inherit" fontSize="11" fill="#728096">
-      <text x="56" y="20">Vᴅᴅ = 1,2 V</text>
-      <text x="126" y="46">I_ref = {fmt(current)} µA</text>
-      <text x="216" y="46">I_out = {fmt(current)} µA</text>
-      <text x="262" y="64" fill="#df7037">v_out</text>
-      <text x="50" y="112" fill="#344b65">M₁</text>
-      <text x="236" y="112" fill="#344b65">M₂</text>
-      <text x="58" y="128" fontSize="9">diodo</text>
-      <text x="58" y="140" fontSize="9">conectado</text>
-      <text x="12" y="166">Vᴅs,out = {fmt(vds, 2)} V</text>
+      <text x="124" y="18">Vᴅᴅ = 1,2 V</text>
+      <text x="84" y="52" textAnchor="end">I_ref = {fmt(current)} µA</text>
+      <text x="84" y="68" textAnchor="end" fontSize="9">fonte ideal</text>
+      <text x="203" y="50">I_out = {fmt(current)} µA</text>
+      <text x="244" y="80" fill="#df7037">v_out</text>
+      <text x="123" y="145" fill="#344b65">M₁</text>
+      <text x="208" y="145" fill="#344b65">M₂</text>
+      <text x="14" y="204">Vᴅs,out = {fmt(vds, 2)} V</text>
     </g>
   </svg>;
 }
