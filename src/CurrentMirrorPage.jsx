@@ -5,7 +5,7 @@ import { mirrorPoint, MIRROR, MIRROR_METRICS } from './mirrorModel';
 import { fmt } from './labUi';
 
 const config = {
-  key: 'cm', tag: 'CM', title: 'Espelho de corrente', version: 'EXPERIMENTO 02',
+  key: 'cm', tag: 'CM', title: 'Espelho de corrente', version: 'EXPERIMENTO 02', block: 'mirror',
   csvName: 'gmid-espelho-ilustrativo', schematic: MirrorSchematic, devices: 'NMOS',
   exampleSlug: 'espelho-mismatch',
   caption: 'M₁/M₂ em destaque · razão 1:1 · corrente fixa',

@@ -5,7 +5,7 @@ import { ACTIVE_METRICS, activeLoadPoint } from './activeLoadModel';
 import { fmt } from './labUi';
 
 const config = {
-  key: 'al', tag: 'AL', title: 'Carga ativa', version: 'EXPERIMENTO 03',
+  key: 'al', tag: 'AL', title: 'Carga ativa', version: 'EXPERIMENTO 03', block: 'active',
   csvName: 'gmid-carga-ativa-ilustrativo', schematic: ActiveSchematic, devices: 'NMOS + PMOS',
   exampleSlug: 'carga-ativa-ganho',
   caption: 'M_L em destaque · slider e L selecionam somente a carga',

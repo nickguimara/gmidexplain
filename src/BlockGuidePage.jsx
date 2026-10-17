@@ -38,27 +38,44 @@ function PointControls({ example, efficiency, setEfficiency, length, setLength }
   </div>;
 }
 
-function Checklist({ example, point, efficiency }) {
+// A checklist só revela uma parcela depois que o projetista chega à etapa que a
+// determina (ou faz a escolha no ponto). Nada aparece preenchido de antemão.
+function Checklist({ example, point, efficiency, reveal }) {
   const footer = latex => <div className="checklist-gm"><MathFormula inline latex={latex} /></div>;
-  if (example.block === 'mirror') return <TransistorChecklist heading="M₁ e M₂" items={[
-    { key: 'length', symbol: 'L', label: 'Comprimento', value: point.length, unit: String.raw`\mu\mathrm m` },
-    { key: 'efficiency', symbol: String.raw`\frac{g_m}{I_D}`, label: 'Eficiência', value: efficiency, unit: String.raw`\mathrm{V^{-1}}` },
-    { key: 'current', symbol: 'I_{\rm ref}', label: 'Corrente copiada', value: point.current, unit: String.raw`\mu\mathrm A` },
-    { key: 'width', symbol: 'W', label: 'Largura (cada)', value: point.width, unit: String.raw`\mu\mathrm m` },
-  ]} footer={footer(String.raw`2WL=${quantity(point.pairArea, String.raw`\mu\mathrm m^2`, 3)}`)} />;
-  if (example.block === 'active') return <TransistorChecklist heading="Carga PMOS M_L" items={[
-    { key: 'length', symbol: 'L_L', label: 'Comprimento da carga', value: point.length, unit: String.raw`\mu\mathrm m` },
-    { key: 'efficiency', symbol: String.raw`\left(\frac{g_m}{I_D}\right)_L`, label: 'Eficiência da carga', value: efficiency, unit: String.raw`\mathrm{V^{-1}}` },
-    { key: 'current', symbol: 'I_D', label: 'Corrente', value: point.current, unit: String.raw`\mu\mathrm A` },
-    { key: 'width', symbol: 'W_L', label: 'Largura da carga', value: point.loadWidth, unit: String.raw`\mu\mathrm m` },
-    { key: 'gm', symbol: 'g_{m,L}', label: 'Transcondutância', value: point.loadGm, unit: String.raw`\mu\mathrm S` },
-  ]} footer={footer(String.raw`A_{v0}=\frac{g_{m,1}}{g_{ds,1}+g_{ds,2}}`)} />;
-  return <TransistorChecklist heading="Par de entrada M₁ e M₂" items={[
-    { key: 'length', symbol: 'L', label: 'Comprimento', value: point.length, unit: String.raw`\mu\mathrm m` },
-    { key: 'efficiency', symbol: String.raw`\left(\frac{g_m}{I_D}\right)_{in}`, label: 'Eficiência da entrada', value: efficiency, unit: String.raw`\mathrm{V^{-1}}` },
-    { key: 'current', symbol: 'I_{D1,2}', label: 'Corrente por ramo', value: point.current, unit: String.raw`\mu\mathrm A` },
-    { key: 'width', symbol: 'W', label: 'Largura (cada)', value: point.input.width, unit: String.raw`\mu\mathrm m` },
-  ]} footer={footer(String.raw`I_{\rm tail}=2I_{D1,2}=${quantity(example.tailCurrent, String.raw`\mu\mathrm A`, 0)}`)} />;
+  const chosen = value => reveal.point ? value : null;
+  const sized = value => reveal.size ? value : null;
+  let heading, items, ledger;
+  if (example.block === 'mirror') {
+    heading = 'M₁ e M₂';
+    items = [
+      { key: 'length', symbol: 'L', label: 'Comprimento', value: chosen(point.length), unit: String.raw`\mu\mathrm m` },
+      { key: 'efficiency', symbol: String.raw`\frac{g_m}{I_D}`, label: 'Eficiência', value: chosen(efficiency), unit: String.raw`\mathrm{V^{-1}}` },
+      { key: 'current', symbol: 'I_{\rm ref}', label: 'Corrente copiada', value: chosen(point.current), unit: String.raw`\mu\mathrm A` },
+      { key: 'width', symbol: 'W', label: 'Largura (cada)', value: sized(point.width), unit: String.raw`\mu\mathrm m` },
+    ];
+    ledger = footer(String.raw`2WL=${quantity(point.pairArea, String.raw`\mu\mathrm m^2`, 3)}`);
+  } else if (example.block === 'active') {
+    heading = 'Carga PMOS M_L';
+    items = [
+      { key: 'length', symbol: 'L_L', label: 'Comprimento da carga', value: chosen(point.length), unit: String.raw`\mu\mathrm m` },
+      { key: 'efficiency', symbol: String.raw`\left(\frac{g_m}{I_D}\right)_L`, label: 'Eficiência da carga', value: chosen(efficiency), unit: String.raw`\mathrm{V^{-1}}` },
+      { key: 'current', symbol: 'I_D', label: 'Corrente', value: chosen(point.current), unit: String.raw`\mu\mathrm A` },
+      { key: 'width', symbol: 'W_L', label: 'Largura da carga', value: sized(point.loadWidth), unit: String.raw`\mu\mathrm m` },
+      { key: 'gm', symbol: 'g_{m,L}', label: 'Transcondutância', value: chosen(point.loadGm), unit: String.raw`\mu\mathrm S` },
+    ];
+    ledger = footer(String.raw`A_{v0}=\frac{g_{m,1}}{g_{ds,1}+g_{ds,2}}`);
+  } else {
+    heading = 'Par de entrada M₁ e M₂';
+    items = [
+      { key: 'length', symbol: 'L', label: 'Comprimento', value: chosen(point.length), unit: String.raw`\mu\mathrm m` },
+      { key: 'efficiency', symbol: String.raw`\left(\frac{g_m}{I_D}\right)_{in}`, label: 'Eficiência da entrada', value: chosen(efficiency), unit: String.raw`\mathrm{V^{-1}}` },
+      { key: 'current', symbol: 'I_{D1,2}', label: 'Corrente por ramo', value: chosen(point.current), unit: String.raw`\mu\mathrm A` },
+      { key: 'width', symbol: 'W', label: 'Largura (cada)', value: sized(point.input.width), unit: String.raw`\mu\mathrm m` },
+    ];
+    ledger = footer(String.raw`I_{\rm tail}=2I_{D1,2}=${quantity(example.tailCurrent, String.raw`\mu\mathrm A`, 0)}`);
+  }
+  const complete = items.every(item => item.value != null);
+  return <TransistorChecklist heading={heading} items={items} footer={complete ? ledger : null} />;
 }
 
 // Conteúdo de cada etapa, por bloco. Mantido explícito para o texto didático.
@@ -175,10 +192,19 @@ export default function BlockGuidePage({ example }) {
   const [step, setStep] = useState(0), [reached, setReached] = useState(0);
   const [efficiency, setEfficiency] = useState(example.start.efficiency);
   const [length, setLength] = useState(example.start.length);
+  // "chosen" vira true só quando o projetista mexe de fato no ponto (slider ou L)
+  // ou quando avança além dele; até lá a checklist lateral fica vazia.
+  const [chosen, setChosen] = useState(false);
   const point = example.evaluate(efficiency, length);
   const stage = example.steps[step];
   const Body = BODY[example.block];
-  const charts = (...items) => items.map(item => <GuideChart key={item.id} {...item} id={`${example.slug}-${item.id}`} {...{ efficiency, setEfficiency, length }} />);
+  const pointIndex = example.steps.findIndex(item => item.key === 'point');
+  const geometryIndex = example.steps.findIndex(item => item.key === 'geometry');
+  const sizeIndex = geometryIndex >= 0 ? geometryIndex : pointIndex + 1;
+  const reveal = { point: chosen || reached > pointIndex, size: reached >= sizeIndex };
+  const pickEfficiency = value => { setChosen(true); setEfficiency(value); };
+  const pickLength = value => { setChosen(true); setLength(value); };
+  const charts = (...items) => items.map(item => <GuideChart key={item.id} {...item} id={`${example.slug}-${item.id}`} {...{ efficiency, setEfficiency: pickEfficiency, length }} />);
   useEffect(() => { document.title = `${example.title} · gm/ID lab`; }, [example.title]);
   useEffect(() => {
     const pipeline = pipelineRef.current, active = pipeline?.querySelector('[aria-current="step"]');
@@ -194,7 +220,7 @@ export default function BlockGuidePage({ example }) {
       if (card) window.scrollTo({ top: Math.max(0, window.scrollY + card.getBoundingClientRect().top - header.getBoundingClientRect().height - 18) });
     });
   }
-  function reset() { setStep(0); setReached(0); setEfficiency(example.start.efficiency); setLength(example.start.length); window.scrollTo(0, 0); }
+  function reset() { setStep(0); setReached(0); setChosen(false); setEfficiency(example.start.efficiency); setLength(example.start.length); window.scrollTo(0, 0); }
   return <div className="guide-page" ref={pageRef}>
     <header className="guide-header">
       <div className="guide-topbar"><a href={example.labRoute} className="back-lab"><ArrowLeft size={16} /> {example.labLabel}</a><span className="guide-brand">gₘ/Iᴅ <span>lab</span></span><span className="guide-counter">EXEMPLO {example.number} · BLOCO {example.block === 'mirror' ? 'CM' : example.block === 'active' ? 'AL' : 'DP'}</span></div>
@@ -209,7 +235,7 @@ export default function BlockGuidePage({ example }) {
           <div className="step-kicker"><span>ETAPA {step + 1} DE {example.steps.length}</span><Calculator size={16} /></div>
           <h2 tabIndex={-1} ref={headingRef}>{stage.title}</h2>
           <p className="step-description">{stage.text}</p>
-          {stage.key === 'point' && <PointControls {...{ example, efficiency, setEfficiency, length, setLength }} />}
+          {stage.key === 'point' && <PointControls {...{ example, efficiency, setEfficiency: pickEfficiency, length, setLength: pickLength }} />}
           {stage.key === 'point' && example.block === 'mirror' && charts(
             { id: 'compliance', title: 'Tensão de compliance mínima', unit: 'V', shared: true, latex: String.raw`V_{DS,\min}\colon I_D/I_F=99\%`, evaluate: (e, l) => example.evaluate(e, l).vMinOut },
             { id: 'error', title: 'Mismatch a área fixa', unit: '%', shared: true, latex: String.raw`\sigma_{\Delta I/I}=\frac{g_m}{I_D}\frac{A_{VT}}{\sqrt{A_{\rm ref}}},\ A_{\rm ref}=1\,\mu\mathrm m^2`, evaluate: (e, l) => example.evaluate(e, l).referenceMismatchPercent },
@@ -228,7 +254,7 @@ export default function BlockGuidePage({ example }) {
           <Body {...{ stage, example, point, efficiency }} />
           <div className="step-navigation"><button className="secondary-button" disabled={step === 0} onClick={() => changeStep(step - 1)}><ArrowLeft size={14} /> Anterior</button><span>{step + 1} / {example.steps.length}</span>{step < example.steps.length - 1 ? <button className="primary-button" onClick={() => { setReached(value => Math.max(value, step + 1)); changeStep(step + 1); }}>Continuar <ArrowRight size={14} /></button> : <a className="primary-button" href={example.labRoute}>Voltar ao laboratório <ArrowRight size={14} /></a>}</div>
         </section>
-        <aside className="guide-live"><Checklist {...{ example, point, efficiency }} /></aside>
+        <aside className="guide-live"><Checklist {...{ example, point, efficiency, reveal }} /></aside>
       </div>
       <details className="guide-assumptions"><summary>Hipóteses e referência do método</summary><p>Roteiro adaptado de <strong>{example.reference}</strong>. Densidade, capacitâncias e proxies de saturação são analíticos e ilustrativos; nenhuma curva foi extraída do PDK IHP SG13G2.</p><a className="method-reference" href={BOOK.url} target="_blank" rel="noreferrer"><BookOpen size={13} /> {BOOK.title}</a><p>A melhor validação é SPICE com corners e a caracterização real dos dispositivos.</p></details>
       <nav className="other-examples" aria-label="Outros exemplos">{BLOCK_EXAMPLES.filter(item => item.slug !== example.slug).map(item => <a key={item.slug} href={`#/exemplos/${item.slug}`}><span>{item.number}</span>{item.title}<ArrowRight size={14} /></a>)}<a href="#/exemplos/fluxo-basico"><span>01</span>Fluxo básico do fonte comum<ArrowRight size={14} /></a></nav>

@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen, Download, FlaskConical, Info } from 'lucide-react
 import LabShell from './LabShell';
 import MathFormula from './MathFormula';
 import TradeoffChart from './TradeoffChart';
+import ExampleLinks from './ExampleLinks';
 import { EfficiencyControl, LabChart, LabDialog, LengthSelector, Metric, fmt } from './labUi';
 import { COLORS, LENGTHS } from './model';
 
@@ -34,7 +35,7 @@ export default function SelectionLabPage({ config }) {
   }
   const Schematic = config.schematic;
   return <>
-    <LabShell activeKey={config.key} version={config.version} onHelp={() => setModal('guide')} onUnavailable={setModal}>
+    <LabShell activeKey={config.key} version={config.version} onHelp={() => setModal('guide')} onUnavailable={setModal} showExamples={!!config.block}>
       <div className="card title-hero">
         <div className="title-hero-left">
           <h1>{config.title}<span className="title-tag">{config.tag}</span></h1>
@@ -74,6 +75,7 @@ export default function SelectionLabPage({ config }) {
           </div>
         </section>
       </div></div>
+      {config.block && <ExampleLinks block={config.block} />}
       <footer><span>Modelo didático · Não validado para fabricação</span></footer>
     </LabShell>
     {modal && <LabDialog onClose={() => setModal(null)} title={modal === 'guide' ? `Escolher gm/ID: ${config.title.toLowerCase()}` : 'Sobre as curvas'} icon={modal === 'guide' ? <BookOpen size={25} /> : <FlaskConical size={25} />} actionLabel="Entendido">

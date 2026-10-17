@@ -5,7 +5,7 @@ import { DIFF_METRICS, differentialPoint } from './differentialModel';
 import { fmt } from './labUi';
 
 const config = {
-  key: 'dp', tag: 'DP', title: 'Par diferencial', version: 'EXPERIMENTO 04', tall: true,
+  key: 'dp', tag: 'DP', title: 'Par diferencial', version: 'EXPERIMENTO 04', block: 'diff', tall: true,
   csvName: 'gmid-par-diferencial-ilustrativo', schematic: DiffSchematic, devices: 'NMOS + PMOS',
   exampleSlug: 'par-diferencial-fluxo',
   caption: 'M₁/M₂ em destaque: gm/ID e L do par de entrada',
