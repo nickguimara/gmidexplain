@@ -14,8 +14,8 @@ const DEFINITIONS = {
     const folga = MIRROR.vdsOut - point.vMinOut;
     return `Compliance é a menor tensão que o nó de saída precisa ter para o transistor de saída continuar em saturação. Neste ponto ela vale ${fmt(point.vMinOut, 3)} V, contra os ${fmt(MIRROR.vdsOut, 2)} V de Vᴅs,out assumidos: sobram ${fmt(folga, 3)} V de folga antes de M2 sair de saturação. Abaixo dela o espelho copia menos corrente do que a referência. M1 tem Vᴅs = Vɢs, por isso não existe compliance no ramo de referência.`;
   },
-  error: 'Só a parcela de mismatch entra aqui: σ(ΔV_T) = K_V/√(W·L), com K_V = 0,5 mV·µm. O erro por modulação de canal (λ·V_DS) também existe, mas neste modelo depende só de L e não muda com o gₘ/Iᴅ. A largura que produz cada curva está no gráfico ao lado.',
-  width: 'Acima, a largura de cada transistor para a corrente de saída escolhida (log); abaixo, a corrente que essa largura precisa suprir, igual para todos os L. W = I_out/(I_out/W): em inversão fraca a mesma corrente sai com muito menos largura, mas a compliance mínima sobe e o ganho do par cai.',
+  error: 'Mismatch é o erro de cópia entre I_out e I_ref. Só a parcela de desvio de V_T entra aqui: σ(ΔV_T) = K_V/√(W·L), com K_V = 0,5 mV·µm. O erro por modulação de canal (λ·V_DS) também existe, mas neste modelo depende só de L e não muda com o gₘ/Iᴅ. A largura que produz cada curva está no gráfico ao lado.',
+  width: 'Largura de cada transistor para a corrente de saída escolhida, em escala log. W = I_out/(I_out/W): em inversão fraca a mesma corrente sai com muito menos largura, mas a compliance mínima sobe e o ganho do par cai.',
 };
 
 // Mesmo símbolo do fonte comum: transistor com seta interna, barra de gate à
@@ -76,11 +76,11 @@ function CurrentMirrorPage() {
         <div className="plot-header"><h2>{config.title}</h2>{config.symbol && <span className="plot-symbol">{config.symbol}</span>}</div>
         <div className="regime-labels"><span>FORTE</span><span>MODERADA</span><span>FRACA</span></div>
         {metric === 'width'
-          ? <TradeoffChart {...{ efficiency, setEfficiency, length }} evaluate={evaluate} areaKey="width" areaUnit="µm" areaLabel="W (µm · log)" currentKey="outCurrent" currentLabel="I_out (µA)" logRange={[0.1, 100]} />
+          ? <TradeoffChart {...{ efficiency, setEfficiency, length }} evaluate={evaluate} areaKey="width" areaUnit="µm" areaLabel="W (µm · log)" logRange={[0.1, 100]} showCurrent={false} />
           : <LabChart id={`mirror-${metric}`} config={config} evaluate={(e, l) => evaluate(e, l)[config.key ?? metric]} {...{ efficiency, setEfficiency, length }} />}
         {DEFINITIONS[metric] && <p className="headroom-definition">{typeof DEFINITIONS[metric] === 'function' ? DEFINITIONS[metric](point) : DEFINITIONS[metric]}</p>}
       </section>)}
-        <section className="card operating-card summary-card"><div className="operating-top"><h2>Ponto selecionado</h2><span className="selected-length" style={{ color: COLORS[LENGTHS.indexOf(length)] }}>L = {fmt(length, 2)} µm</span></div><div className="metrics-grid five"><Metric label="CORRENTE COPIADA" symbol="I_out" value={fmt(point.outCurrent)} unit="µA" /><Metric label="ERRO DE CÓPIA" symbol="|ΔI|/I ≈" value={fmt(point.errorPercent, 2)} unit="%" /><Metric label="W NECESSÁRIA" symbol="W por transistor" value={fmt(point.width, 2)} unit="µm" /><Metric label="V OUT MÍNIMA" symbol="Vᴅs,out,mín =" value={fmt(point.vMinOut, 3)} unit="V" /><Metric label="FOLGA DE SAÍDA" symbol="Vᴅs,out − Vᴅs,out,mín =" value={fmt(MIRROR.vdsOut - point.vMinOut, 3)} unit="V" /></div></section></div></div>
+        <section className="card operating-card summary-card"><div className="operating-top"><h2>Ponto selecionado</h2><span className="selected-length" style={{ color: COLORS[LENGTHS.indexOf(length)] }}>L = {fmt(length, 2)} µm</span></div><div className="metrics-grid five"><Metric label="CORRENTE COPIADA" symbol="I_out" value={fmt(point.outCurrent)} unit="µA" /><Metric label="MISMATCH" symbol="|ΔI|/I ≈" value={fmt(point.errorPercent, 2)} unit="%" /><Metric label="W NECESSÁRIA" symbol="W por transistor" value={fmt(point.width, 2)} unit="µm" /><Metric label="V OUT MÍNIMA" symbol="Vᴅs,out,mín =" value={fmt(point.vMinOut, 3)} unit="V" /><Metric label="FOLGA DE SAÍDA" symbol="Vᴅs,out − Vᴅs,out,mín =" value={fmt(MIRROR.vdsOut - point.vMinOut, 3)} unit="V" /></div></section></div></div>
       {!point.precise && <div className="warning"><Info size={17} /> Atenção: o erro por mismatch estimado é {fmt(point.errorPercent, 2)}%, acima da meta de {fmt(MIRROR.errorTarget)}%. Para esta corrente, L = {fmt(length, 2)} µm pede uma área maior ou um gₘ/Iᴅ mais alto.</div>}
       <footer><span>Modelo didático · Não validado para fabricação</span></footer>
     </LabShell>
@@ -89,9 +89,9 @@ function CurrentMirrorPage() {
         <p>O espelho tenta fazer <strong>I_out = I_ref</strong>. Como dois transistores reais nunca são iguais, o projeto consiste em controlar <em>quanto</em> eles erram e <em>quanto</em> de tensão o nó de saída precisa para funcionar.</p>
         <ol>
           <li><strong>O gₘ fica fixo em 300 µS.</strong> A corrente de referência vem de I_ref = gₘ/(gₘ/Iᴅ), igual ao fonte comum. Só o gₘ/Iᴅ muda.</li>
-          <li><strong>Erro de cópia.</strong> A lei de Pelgrom diz que o desvio padrão de V_T cai com a área: σ(ΔV_T) = K_V/√(W·L). Como I ∝ V_OV², o erro relativo de corrente é σ(ΔV_T)·(gₘ/Iᴅ). Transistores maiores copiam melhor.</li>
+          <li><strong>Mismatch.</strong> A lei de Pelgrom diz que o desvio padrão de V_T cai com a área: σ(ΔV_T) = K_V/√(W·L). Como I ∝ V_OV², o erro relativo de corrente é σ(ΔV_T)·(gₘ/Iᴅ). Transistores maiores copiam melhor.</li>
           <li><strong>Compliance.</strong> M2 só copia enquanto estiver em saturação, ou seja, enquanto a tensão no nó de saída ficar acima de 2/(gₘ/Iᴅ). Essa é a <em>tensão de compliance mínima</em>: no ponto de partida (gₘ/Iᴅ = 15) ela vale 0,133 V, então sobram 0,467 V até os 0,6 V de V_DS,out assumidos. Inversão fraca entrega a mesma corrente com menos tensão.</li>
-          <li><strong>Compare os L.</strong> Cada curva corresponde a um L, anotado no gráfico. A compliance é igual para todos: ela não depende de L nesta aproximação.</li>
+          <li><strong>W é a leitura.</strong> O terceiro gráfico dá a largura de cada transistor para a corrente escolhida, em escala log: em inversão fraca a mesma corrente sai com muito menos largura, ao custo de compliance e ganho. <strong>Compare os L.</strong> Cada curva corresponde a um L, anotado no gráfico. A compliance é igual para todos: ela não depende de L nesta aproximação.</li>
           <li><strong>Leia o par como sistema.</strong> Cópia mais precisa custa área; largura e área maiores melhoram o erro de mismatch, mas não devolvem tensão ao nó de saída.</li>
         </ol>
         <div className="formula">I_ref = gₘ / (gₘ/Iᴅ)<br />σ(ΔV_T) = K_V / √(W·L)<br />|ΔI|/I = σ(ΔV_T)·(gₘ/Iᴅ)<br />V_DS,out,mín ≈ 2/(gₘ/Iᴅ)</div>
