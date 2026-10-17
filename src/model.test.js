@@ -48,6 +48,31 @@ test('a comparação mantém gm fixo enquanto troca consumo por área', () => {
   }
 });
 
+test('a densidade de corrente decresce com o gm/ID e satura em subthreshold', () => {
+  // Regressão: o fator de inversão (n−1)²−1 antigo ia a zero em inversão fraca,
+  // o que fazia W e a área explodirem e o mismatch de Pelgrom "melhorar" sem
+  // limite. O patamar garante que J_D nunca zere nem decresça mais que isso.
+  for (const length of LENGTHS) {
+    let previous = Infinity;
+    for (let i = 0; i <= 400; i++) {
+      const efficiency = 5 + i * .05;
+      const density = designPoint(efficiency, length).current / designPoint(efficiency, length).width;
+      assert(density > 0, 'J_D nunca zera');
+      assert(density <= previous + 1e-12, `J_D cai com o gₘ/Iᴅ em L = ${length}`);
+      previous = density;
+    }
+    // mesmo com W enorme, a densidade para no mesmo patamar para todo L
+    const weak = designPoint(25, length);
+    assert(Math.abs(weak.current / weak.width - 377 / (625 * length)) < 1e-9);
+  }
+  // e o platô realmente é o que limita: com eta enorme, J_D deixa de cair
+  const huge = operatingPoint(1e6, .5, 1, .6);
+  assert(Math.abs(huge.current / huge.width - .05) < 1e-9);
+  // em inversão forte a escala é V_OV²/L, ou seja 1/(gₘ/Iᴅ)²·L
+  const a = operatingPoint(10, .5, 20, .6), b = operatingPoint(20, .5, 20, .6);
+  assert(Math.abs((a.current / a.width) / (b.current / b.width) - 4) < 1e-9);
+});
+
 test('headroom estima a tensão de saturação, sem inventar dependência em L', () => {
   for (const efficiency of [5, 10, 15, 20, 25]) for (const length of LENGTHS) {
     const point = designPoint(efficiency, length);

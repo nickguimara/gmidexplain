@@ -5,10 +5,14 @@ export const COLORS = ['#235bd4', '#a95308', '#8036b5', '#007a68'];
 export const BIAS = { gm: 300, vds: 0.6, vdd: 1.2 }; // µS, V, V
 export const NOISE = { temperature: 300.15, gamma: 2 / 3, boltzmann: 1.380649e-23 };
 export function operatingPoint(efficiency, length, current, vds) {
-  const thermalVoltage = 0.02585;
-  const slopeFactor = 1.4;
-  const inversion = Math.max(0.015, (2 / (slopeFactor * thermalVoltage * efficiency) - 1) ** 2 - 1);
-  const density = 0.27 * inversion / length; // µA/µm; illustrative normalization
+  // Densidade de corrente em função da sobrecondução, com saturação em
+  // subthreshold. Em inversão forte J_D ∝ V_OV²/L e V_OV = 2/(gm/ID), logo
+  // J_D ∝ 1/(gm/ID)²·L. O fator (n−1)²−1 usado antes decaía a zero em
+  // inversão fraca, o que fazia W e a área explodirem e a lei de Pelgrom
+  // "melhorar" sem limite. Aqui o patamar impede que J_D chegue a zero.
+  const strongInversion = 377 / (efficiency * efficiency * length); // µA/µm
+  const subthreshold = 0.05; // µA/µm; illustrative plateau
+  const density = Math.max(subthreshold, strongInversion);
   const width = current / density;
   const gm = efficiency * current; // µS
   const earlyVoltage = (3 + length * 19) * (0.7 + 0.3 * vds / 0.6);

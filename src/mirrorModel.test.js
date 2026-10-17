@@ -27,6 +27,28 @@ describe('espelho de corrente 1:1', () => {
     assert.ok(Math.abs(point.errorPercent - point.error * 100) < 1e-12);
   });
 
+  it('cresce monotonicamente com o gm/ID, sem o artefato de densidade', () => {
+    // Regressão: com o fator de inversão antigo, J_D ia a zero em inversão
+    // fraca, W explodia e Pelgrom "melhorava" — a curva tinha um teto e caía.
+    LENGTHS.forEach(l => {
+      let previous = -1;
+      for (let i = 0; i <= 200; i++) {
+        const error = mirrorPoint(5 + i * .1, l).error;
+        assert(error > previous, `mismatch deve crescer com o gₘ/Iᴅ em L = ${l}`);
+        previous = error;
+      }
+    });
+    // e a largura também, para qualquer gₘ/Iᴅ
+    LENGTHS.forEach(l => {
+      let previous = -1;
+      for (let i = 0; i <= 200; i++) {
+        const width = mirrorPoint(5 + i * .1, l).width;
+        assert(width > previous, `W deve crescer com o gₘ/Iᴅ em L = ${l}`);
+        previous = width;
+      }
+    });
+  });
+
   it('melhora a cópia com L maior, para o mesmo gm/ID', () => {
     const errors = LENGTHS.map(l => mirrorPoint(15, l).error);
     errors.forEach((value, i) => { if (i) assert.ok(value < errors[i - 1], `L = ${LENGTHS[i]} deve errar menos`); });
