@@ -29,9 +29,9 @@ function MirrorSchematic({ current, vds }) {
       <path d="M200 22v50M200 72v38M200 110h-17v43h17v24M200 177v8M188 185h24M192 190h16M196 195h8" />
       <path d="M194 145h-10m4-4-4 4 4 4" />
       <path d="M173 112v39M200 86h45" />
-      {/* gates ligados entre si e ao dreno de M1 */}
-      <path d="M105 104h27v28M132 132h41" />
-      <circle cx="105" cy="104" r="3" fill="#42536b" /><circle cx="200" cy="86" r="3" fill="#fff" />
+      {/* gates ligados entre si; o dreno de M1 entra no meio do fio horizontal */}
+      <path d="M105 104h47.5v28M132 132h41" />
+      <circle cx="105" cy="104" r="3" fill="#42536b" /><circle cx="152.5" cy="132" r="3" fill="#42536b" /><circle cx="200" cy="86" r="3" fill="#fff" />
       <path d="M91 22h22" />
     </g>
     <g fontFamily="inherit" fontSize="11" fill="#728096">
