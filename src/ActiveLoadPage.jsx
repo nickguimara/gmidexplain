@@ -10,38 +10,46 @@ const evaluate = (efficiency, length) => activeLoadPoint(efficiency, length);
 // Dois transistores, na mesma gramática do lab do fonte comum: canal vertical,
 // barra de gate à esquerda, seta de canal e zigue-zague da fonte. No PMOS o
 // zigue-zague fica no topo, porque a fonte vai para V_DD.
+// Geometria do desenho. Tudo é derivado do centro do canal, para que a barra de
+// gate, a seta e o fio de entrada caiam no mesmo eixo dos dois transistores.
+const COL = 190; // coluna dos canais
+const GATE = COL - 27; // coluna das barras de gate
+const GATE_HALF = 30; // meia-altura da barra: cobre o canal inteiro, como no CS
+const mid = d => (d.top + d.bottom) / 2;
+
 function ActiveSchematic({ current }) {
   const ground = (x, y) => <path d={`M${x} ${y}v8M${x - 12} ${y + 8}h24M${x - 8} ${y + 13}h16M${x - 4} ${y + 18}h8`} />;
   // Canal em x, de top a bottom. No PMOS a fonte sobe para V_DD; no NMOS desce
-  // em zigue-zague até o terra. A barra de gate fica 27 px à esquerda e o fio de
-  // entrada entra no meio dela. Os dois transistores dividem a mesma coluna: o
-  // dreno de M_L e o de M1 são o nó de saída.
-  const fet = (x, top, bottom, pmos) => <>
-    <path d={`M${x} ${top}v${bottom - top}`} />
-    <path d={`M${x} ${top + 24}v18m-5-6 5 6 5-6`} />
-    <path d={`M${x - 27} ${top + 18}v32`} />
+  // em zigue-zague até o terra. A barra de gate é centrada no canal e o fio
+  // entra no meio dela, na mesma altura para os dois.
+  const fet = (span, pmos) => <>
+    <path d={`M${COL} ${span.top}v${span.bottom - span.top}`} />
+    <path d={`M${COL} ${mid(span) - 9}v18m-5-6 5 6 5-6`} />
+    <path d={`M${GATE} ${mid(span) - GATE_HALF}v${GATE_HALF * 2}`} />
     {pmos
-      ? <path d={`M${x} ${top}v-26`} />
-      : <><path d={`M${x} ${bottom}h-15v26h15v18`} /><path d={`M${x + 6} ${bottom + 12}h-10m4-4-4 4 4 4`} /></>}
+      ? <path d={`M${COL} ${span.top}v-26`} />
+      : <><path d={`M${COL} ${span.bottom}h-15v26h15v18`} /><path d={`M${COL + 6} ${span.bottom + 12}h-10m4-4-4 4 4 4`} /></>}
   </>;
+  const load = { top: 52, bottom: 112 };
+  const input = { top: 132, bottom: 192 };
   return <svg className="schematic" viewBox="24 6 232 256" role="img" aria-label="Fonte comum NMOS com um único transistor PMOS como carga ativa. M1 recebe a entrada em v_in e tem a saída tomada no dreno, em v_out, onde fica a carga C_L. O gate da carga está numa tensão de polarização fixa V_bias, separada do rail de V_DD, então a corrente é imposta pelo transistor e não por um espelho.">
     <g fill="none" stroke="#42536b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       {/* V_DD alimenta só a fonte de M_L; V_bias é um rail separado, só do gate */}
-      <path d="M190 26h55M95 26H35v60h128" />
-      {fet(190, 52, 112, true)}
-      {fet(190, 132, 192, false)}
+      <path d={`M${COL} 26h55M95 26H35v${mid(load) - 26}h128`} />
+      {fet(load, true)}
+      {fet(input, false)}
       {/* nó de saída entre os dois drenos, com C_L pendurada à direita */}
-      <path d="M190 112v20M163 166H35M190 122h45v28M228 150h14M231 156h8" />
+      <path d={`M${COL} ${load.bottom}v${input.top - load.bottom}M35 ${mid(input)}h${GATE - 35}M${COL} 122h45v28M228 150h14M231 156h8`} />
       {ground(235, 156)}
       {ground(190, 236)}
-      <circle cx="190" cy="112" r="3" fill="#42536b" /><circle cx="190" cy="132" r="3" fill="#42536b" />
+      <circle cx={COL} cy={load.bottom} r="3" fill="#42536b" /><circle cx={COL} cy={input.top} r="3" fill="#42536b" />
     </g>
     <g fontFamily="inherit" fontSize="11" fill="#728096">
       <text x="196" y="20">Vᴅᴅ = 1,2 V</text>
       <text x="38" y="20" fill="#7a6a94">V_bias</text>
-      <text x="205" y="95" fill="#344b65">M_L</text>
-      <text x="205" y="178" fill="#344b65">M₁</text>
-      <text x="6" y="162" fill="#df7037">vᵢₙ</text>
+      <text x="205" y={mid(load) + 4} fill="#344b65">M_L</text>
+      <text x="205" y={mid(input) + 4} fill="#344b65">M₁</text>
+      <text x="6" y={mid(input) - 4} fill="#df7037">vᵢₙ</text>
       <text x="152" y="118" fill="#df7037">v_out</text>
       <text x="222" y="196" fill="#4b5f78">C_L</text>
       <text x="14" y="240">I_D = {fmt(current)} µA</text>
