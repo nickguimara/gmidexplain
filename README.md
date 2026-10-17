@@ -36,11 +36,11 @@ Segundo bloco, em `/#/espelho`, com o mesmo controle contínuo (gm/ID, gm fixo e
 M1 é diodo-conectado (gate preso ao dreno) e M2 é o transistor de saída; a razão é fixa em 1:1, então I_out = I_ref = g_m/(g_m/I_D). Os quatro gráficos usam o mesmo eixo horizontal — gm/ID — com uma curva por L:
 
 - **Erro de cópia** (`|ΔI|/I = σ(ΔV_T)·(g_m/I_D)`, em %): lei de Pelgrom com σ(ΔV_T) = K_V/√(W·L) e **K_V = 0,5 mV·µm**, um proxy didático, não uma extração de PDK. Como I ∝ V_OV² e V_OV = 2/(g_m/I_D), o erro relativo de corrente cresce com o gm/ID e cai com a área. No modelo: 1,67% em L = 0,13 µm contra 0,22% em L = 1 µm (a g_m/I_D = 15). Só a parcela de mismatch entra no gráfico; o erro por modulação de canal (λ·V_DS) existe e entra em quadratura, mas neste modelo depende apenas de L e não varyaria com o eixo do gráfico.
-- **Tensão de compliance** (V): V_DS,out,mín ≈ 2/(g_m/I_D), igual à expressão de headroom do fonte comum e por isso independente de L — aparece como curva única.
+- **Tensão de compliance** (V): V_DS,out,mín ≈ 2/(g_m/I_D), igual à expressão de headroom do fonte comum e por isso independente de L — aparece como curva única. O texto abaixo do gráfico compara a compliance do ponto com o V_DS,out = 0,6 V assumido e mostra a folga restante, porque é o único número do bloco que precisa ser comparado com um valor fixo.
 - **Ganho com carga em espelho** (V/V): |A_v| = g_m·r_out, o mesmo limite do primeiro experimento, agora imposto pelo transistor de saída do espelho. Com o gm/ID fixo a corrente não muda, então um L maior compra ganho e precisão pagando apenas em área.
 - **Área × corrente**: dois painéis empilhados, agora com a **área do par** 2·W·L e I_out.
 
-O cartão "Ponto selecionado" resume corrente copiada, erro de cópia, área do par e V_DS,out mínima. Quando o erro por mismatch ultrapassa a meta didática de 1%, aparece um aviso laranja no lugar da seção de saturação do fonte comum. Exporta CSV próprio (`gmid-espelho-ilustrativo.csv`) e tem guia próprio. Efeito de corpo, razão k:1, mismatch de layout e a dependência de V_DS na saída não são modelados.
+O cartão "Ponto selecionado" resume corrente copiada, erro de cópia, área do par, compliance mínima e a **folga de saída** (V_DS,out − V_DS,out,mín), que é a margem real antes de M2 sair de saturação. Quando o erro por mismatch ultrapassa a meta didática de 1%, aparece um aviso laranja no lugar da seção de saturação do fonte comum. Exporta CSV próprio (`gmid-espelho-ilustrativo.csv`) e tem guia próprio. Efeito de corpo, razão k:1, mismatch de layout e a dependência de V_DS na saída não são modelados.
 
 ## Ruído
 

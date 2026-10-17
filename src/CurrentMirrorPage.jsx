@@ -8,7 +8,12 @@ import { MIRROR, MIRROR_METRICS, mirrorPoint } from './mirrorModel';
 
 const evaluate = (efficiency, length) => mirrorPoint(efficiency, length);
 const DEFINITIONS = {
-  compliance: 'Compliance é a menor tensão que o nó de saída precisa ter para o transistor de saída continuar em saturação. Abaixo dela, o espelho copia menos corrente do que a referência. M1 tem Vᴅs = Vɢs, por isso não existe compliance no ramo de referência.',
+  // A compliance é o único número do bloco que precisa ser comparado com um valor
+  // assumido, então o texto mostra a folga real em vez de repetir a fórmula do cabeçalho.
+  compliance: point => {
+    const folga = MIRROR.vdsOut - point.vMinOut;
+    return `Compliance é a menor tensão que o nó de saída precisa ter para o transistor de saída continuar em saturação. Neste ponto ela vale ${fmt(point.vMinOut, 3)} V, contra os ${fmt(MIRROR.vdsOut, 2)} V de Vᴅs,out assumidos: sobram ${fmt(folga, 3)} V de folga antes de M2 sair de saturação. Abaixo dela o espelho copia menos corrente do que a referência. M1 tem Vᴅs = Vɢs, por isso não existe compliance no ramo de referência.`;
+  },
   error: 'Só a parcela de mismatch entra aqui: σ(ΔV_T) = K_V/√(W·L), com K_V = 0,5 mV·µm. O erro por modulação de canal (λ·V_DS) também existe, mas neste modelo depende só de L e não muda com o gₘ/Iᴅ.',
   gain: 'É o mesmo limite gₘ·r_out do fonte comum, agora impostos pelo transistor de saída do espelho. Com o gₘ/Iᴅ fixo, a corrente não muda: um L maior compra ganho e precisão pagando só em área.',
 };
@@ -73,9 +78,9 @@ function CurrentMirrorPage() {
         {metric === 'areaCurrent'
           ? <AreaCurrentChart {...{ efficiency, setEfficiency, length }} evaluate={evaluate} areaKey="pairArea" currentKey="outCurrent" areaLabel="Área do par (µm² · log)" currentLabel="I_out (µA)" />
           : <LabChart id={`mirror-${metric}`} config={config} evaluate={(e, l) => evaluate(e, l)[config.key ?? metric]} {...{ efficiency, setEfficiency, length }} />}
-        {DEFINITIONS[metric] && <p className="headroom-definition">{DEFINITIONS[metric]}</p>}
+        {DEFINITIONS[metric] && <p className="headroom-definition">{typeof DEFINITIONS[metric] === 'function' ? DEFINITIONS[metric](point) : DEFINITIONS[metric]}</p>}
       </section>)}
-        <section className="card operating-card summary-card"><div className="operating-top"><h2>Ponto selecionado</h2><span className="selected-length" style={{ color: COLORS[LENGTHS.indexOf(length)] }}>L = {fmt(length, 2)} µm</span></div><div className="metrics-grid"><Metric label="CORRENTE COPIADA" symbol="I_out" value={fmt(point.outCurrent)} unit="µA" /><Metric label="ERRO DE CÓPIA" symbol="|ΔI|/I ≈" value={fmt(point.errorPercent, 2)} unit="%" /><Metric label="ÁREA DO PAR" symbol="2·W·L" value={fmt(point.pairArea, 2)} unit="µm²" /><Metric label="V OUT MÍNIMA" symbol="Vᴅs,out,mín =" value={fmt(point.vMinOut, 3)} unit="V" /></div></section></div></div>
+        <section className="card operating-card summary-card"><div className="operating-top"><h2>Ponto selecionado</h2><span className="selected-length" style={{ color: COLORS[LENGTHS.indexOf(length)] }}>L = {fmt(length, 2)} µm</span></div><div className="metrics-grid five"><Metric label="CORRENTE COPIADA" symbol="I_out" value={fmt(point.outCurrent)} unit="µA" /><Metric label="ERRO DE CÓPIA" symbol="|ΔI|/I ≈" value={fmt(point.errorPercent, 2)} unit="%" /><Metric label="ÁREA DO PAR" symbol="2·W·L" value={fmt(point.pairArea, 2)} unit="µm²" /><Metric label="V OUT MÍNIMA" symbol="Vᴅs,out,mín =" value={fmt(point.vMinOut, 3)} unit="V" /><Metric label="FOLGA DE SAÍDA" symbol="Vᴅs,out − Vᴅs,out,mín =" value={fmt(MIRROR.vdsOut - point.vMinOut, 3)} unit="V" /></div></section></div></div>
       {!point.precise && <div className="warning"><Info size={17} /> Atenção: o erro por mismatch estimado é {fmt(point.errorPercent, 2)}%, acima da meta de {fmt(MIRROR.errorTarget)}%. Para esta corrente, L = {fmt(length, 2)} µm pede uma área maior ou um gₘ/Iᴅ mais alto.</div>}
       <footer><span>Modelo didático · Não validado para fabricação</span></footer>
     </LabShell>
@@ -85,12 +90,12 @@ function CurrentMirrorPage() {
         <ol>
           <li><strong>O gₘ fica fixo em 300 µS.</strong> A corrente de referência vem de I_ref = gₘ/(gₘ/Iᴅ), igual ao fonte comum. Só o gₘ/Iᴅ muda.</li>
           <li><strong>Erro de cópia.</strong> A lei de Pelgrom diz que o desvio padrão de V_T cai com a área: σ(ΔV_T) = K_V/√(W·L). Como I ∝ V_OV², o erro relativo de corrente é σ(ΔV_T)·(gₘ/Iᴅ). Transistores maiores copiam melhor.</li>
-          <li><strong>Compliance.</strong> M2 só copia enquanto estiver em saturação, ou seja, enquanto V_DS,out &gt; 2/(gₘ/Iᴅ). Inversão fraca devolve a mesma corrente com menos tensão.</li>
+          <li><strong>Compliance.</strong> M2 só copia enquanto estiver em saturação, ou seja, enquanto a tensão no nó de saída ficar acima de 2/(gₘ/Iᴅ). Essa é a <em>tensão de compliance mínima</em>: no ponto de partida (gₘ/Iᴅ = 15) ela vale 0,133 V, então sobram 0,467 V até os 0,6 V de V_DS,out assumidos. Inversão fraca entrega a mesma corrente com menos tensão.</li>
           <li><strong>Compare os L.</strong> Cada curva corresponde a um L, anotado no gráfico. A compliance é igual para todos: ela não depende de L nesta aproximação.</li>
           <li><strong>Leia o par como sistema.</strong> Cópia mais precisa custa área; mais área e mais L compram ganho, mas não devolvem tensão ao nó de saída.</li>
         </ol>
         <div className="formula">I_ref = gₘ / (gₘ/Iᴅ)<br />σ(ΔV_T) = K_V / √(W·L)<br />|ΔI|/I = σ(ΔV_T)·(gₘ/Iᴅ)<br />V_DS,out,mín ≈ 2/(gₘ/Iᴅ)</div>
-        <p className="modal-fine">K_V = 0,5 mV·µm é um proxy didático da lei de Pelgrom, não uma extração de PDK. O erro mostrado é 1σ e cobre apenas o mismatch; o erro por modulação de canal (λ·V_DS) entra em quadratura e, neste modelo, varia só com L. A razão é fixa em 1:1; com razão k:1 o erro relativo de mismatch não muda, mas a área escala com k. A compliance ignora efeito de corpo e variação de V_T entre os dois transistores. A tensão de saída V_DS,out = 0,6 V é um ponto DC assumido.</p>
+        <p className="modal-fine">A tensão de compliance mínima é uma tensão <em>necessária</em> para manter M2 em saturação, não uma excursão de saída nem uma tensão de polarização. Ela não limita o lado alto do sinal: para swing, o teto é V_DD. K_V = 0,5 mV·µm é um proxy didático da lei de Pelgrom, não uma extração de PDK. O erro mostrado é 1σ e cobre apenas o mismatch; o erro por modulação de canal (λ·V_DS) entra em quadratura e, neste modelo, varia só com L. A razão é fixa em 1:1; com razão k:1 o erro relativo de mismatch não muda, mas a área escala com k. A compliance ignora efeito de corpo e variação de V_T entre os dois transistores. A tensão de saída V_DS,out = 0,6 V é um ponto DC assumido.</p>
       </> : modal === 'data' ? <>
         <p>O IHP SG13G2 é a tecnologia de referência deste laboratório. <strong>As curvas atuais não foram extraídas do PDK.</strong></p>
         <p>Esta versão usa relações analíticas simplificadas, inspiradas no conceito de inversão do EKV, com normalizações ilustrativas. Efeitos de canal curto, capacitâncias parasitas completas e dependência física de temperatura não são modelados.</p>

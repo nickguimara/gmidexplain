@@ -67,6 +67,9 @@
 .plots-full .summary-card .metric{padding:7px 15px}
 .plots-full .summary-card .metric-label{font-size:8px}
 .plots-full .summary-card .metric-value{font-size:26px}
+.plots-full .summary-card .metrics-grid.five{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:1200px){.plots-full .summary-card .metrics-grid.five .metric-label{font-size:6px}.plots-full .summary-card .metrics-grid.five .metric-value{font-size:21px}}
+@media(max-width:700px){.plots-full .summary-card .metrics-grid.five{grid-template-columns:repeat(2,minmax(0,1fr))}.plots-full .summary-card .metrics-grid.five .metric:nth-child(even){border-right:0}.plots-full .summary-card .metrics-grid.five .metric:nth-child(odd):not(:first-child){border-top:1px solid #edf0f4;padding-top:14px}}
 .focus-heading h2{font-size:11px;font-weight:500;color:#77869a}
 .focus-control .efficiency-control{margin-top:6px}
 .focus-control .efficiency-ends{font-size:8px}
