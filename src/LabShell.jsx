@@ -5,7 +5,7 @@ export const CIRCUIT_BLOCKS = [
   { key: 'cs', short: 'CS', title: 'Fonte comum', text: 'Ganho de tensão e eficiência', tag: 'Common source', route: '#/' },
   { key: 'cm', short: 'CM', title: 'Espelho de corrente', text: 'Precisão e cópia de corrente', tag: 'Current mirror', route: '#/espelho' },
   { key: 'al', short: 'AL', title: 'Carga ativa', text: 'Impedância e ganho', tag: 'Active load', route: '#/carga-ativa' },
-  { key: 'dp', short: 'DP', title: 'Par diferencial', text: 'Transcondutância e simetria', tag: 'Em breve' },
+  { key: 'dp', short: 'DP', title: 'Par diferencial', text: 'Rejeição e simetria', tag: 'Differential pair', route: '#/par-diferencial' },
 ];
 const ICONS = [<Zap size={18} />, <CircuitBoard size={18} />, <Layers size={18} />, <SlidersHorizontal size={18} />];
 

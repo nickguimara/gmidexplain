@@ -14,6 +14,7 @@ const MethodologyPage = lazy(() => import('./MethodologyPage'));
 const BasicGuidePage = lazy(() => import('./BasicGuidePage'));
 const CurrentMirrorPage = lazy(() => import('./CurrentMirrorPage'));
 const ActiveLoadPage = lazy(() => import('./ActiveLoadPage'));
+const DifferentialPage = lazy(() => import('./DifferentialPage'));
 
 function Schematic({ current, vds }) {
   return <svg className="schematic" viewBox="0 0 260 215" role="img" aria-label="Circuito fonte comum NMOS com fonte de corrente ideal no dreno, entrada no gate e saída no dreno">
@@ -89,13 +90,14 @@ function Router() {
     window.addEventListener('hashchange', navigate);
     return () => window.removeEventListener('hashchange', navigate);
   }, []);
-  const TITLES = { '/': 'gm/ID lab · Laboratório CMOS', '/espelho': 'gm/ID lab · Espelho de corrente', '/carga-ativa': 'gm/ID lab · Carga ativa' };
+  const TITLES = { '/': 'gm/ID lab · Laboratório CMOS', '/espelho': 'gm/ID lab · Espelho de corrente', '/carga-ativa': 'gm/ID lab · Carga ativa', '/par-diferencial': 'gm/ID lab · Par diferencial' };
   useEffect(() => { document.title = TITLES[route] ?? 'gm/ID lab · Laboratório CMOS'; }, [route]);
   const example = EXAMPLES.find(item => route === `/exemplos/${item.slug}` || item.aliases?.some(alias => route === `/exemplos/${alias}`));
   if (example?.disabled) return <div className="guide-page"><main className="guide-main"><h1>Exemplo em breve</h1><p>Este exemplo está temporariamente desabilitado. Por enquanto, explore o fluxo básico.</p><a className="primary-button" href="#/">Voltar ao laboratório</a></main></div>;
   if (example) return <Suspense fallback={<div className="worksheet-loading" role="status">Abrindo exemplo…</div>}>{example.flow === 'basic' ? <BasicGuidePage key={example.slug} example={example} /> : <MethodologyPage key={example.slug} example={example} />}</Suspense>;
   if (route === '/espelho') return <Suspense fallback={<div className="worksheet-loading" role="status">Abrindo o espelho de corrente…</div>}><CurrentMirrorPage /></Suspense>;
   if (route === '/carga-ativa') return <Suspense fallback={<div className="worksheet-loading" role="status">Abrindo a carga ativa…</div>}><ActiveLoadPage /></Suspense>;
+  if (route === '/par-diferencial') return <Suspense fallback={<div className="worksheet-loading" role="status">Abrindo o par diferencial…</div>}><DifferentialPage /></Suspense>;
   if (route !== '/') return <div className="guide-main"><h1>Exemplo não encontrado</h1><a className="primary-button" href="#/">Voltar ao laboratório</a></div>;
   return <CommonSourcePage />;
 }

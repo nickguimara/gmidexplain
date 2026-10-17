@@ -1,6 +1,6 @@
 # gm/ID lab
 
-Laboratório web em português para explorar dimensionamento CMOS pelo método gm/ID. Primeiro experimento: fonte comum NMOS com fonte de corrente ideal como carga. Segundo experimento: espelho de corrente NMOS com razão 1:1. Terceiro: carga ativa de um único transistor sobre o fonte comum. O par diferencial aparece no menu como futura iteração.
+Laboratório web em português para explorar dimensionamento CMOS pelo método gm/ID. Primeiro experimento: fonte comum NMOS com fonte de corrente ideal como carga. Segundo experimento: espelho de corrente NMOS com razão 1:1. Terceiro: carga ativa de um único transistor sobre o fonte comum. Quarto: par diferencial com espelho de carga e cauda. Todos os quatro blocos do menu estão implementados.
 
 ## Executar
 
@@ -58,6 +58,20 @@ Três gráficos, todos com gm/ID no eixo x:
 Ganho, V_A e fT vêm do mesmo modelo didático dos outros blocos. O ganho |Aᵥ| = g_m·(r_o1 ∥ r_o,L) fica abaixo de g_m/gds porque a saída vê as duas impedências ao mesmo tempo; ele aparece no cartão de ponto mas não tem gráfico próprio, porque repetiria a curva de ganho do fonte comum com outro rótulo.
 
 O cartão resume headroom do par, swing, ruído, fT do par e ganho. O guia chama de forma explícita o que o modelo não cobre: só ruído térmico de canal (γ = 2/3, T = 300,15 K), sem 1/f, sem ruído da fonte de bias e sem ruído da carga externa; V_bias é um ponto DC assumido, sem variação de PVT nem efeito de corpo.
+
+## Par diferencial (com espelho de carga e cauda)
+
+Quarto e último bloco, em `/#/par-diferencial`. Cinco transistores: M1/M2 são o par de entrada, M3/M4 o espelho de carga PMOS com M3 diodo-conectado, e M5 a fonte de cauda. Mesmo controle contínuo dos outros três (gm/ID, gm fixo em 300 µS) e mesmo seletor de L. O modelo vive em `src/differentialModel.js`.
+
+O que interessa aqui não é o ganho, e sim o que só o par tem. Três gráficos, todos com gm/ID no eixo x:
+
+- **Rejeição de modo comum** (dB): CMRR = 2·g_m·r_tail = **2·(g_m/I_D)·V_A,cauda**. A corrente se cancela: como r_tail = V_A/I e g_m = (g_m/I_D)·I, mudar o gm/ID mexe em I_D e em r_tail na mesma proporção. O resultado é que o CMRR depende só da eficiência e do comprimento da cauda — nunca da corrente. No modelo vai de 38 dB (L = 0,13 µm, g_m/I_D = 5) a 61 dB (L = 1 µm, g_m/I_D = 25), e **satura**: o teto de 1 µm faz L = 0,5 e L = 1 terem a mesma cauda.
+- **Faixa de modo comum** (V): ICMR = V_DD − V_OV,carga − V_OV,cauda − V_OV,1. Embaixo a sobrecondução da cauda somada à do par, em cima o que a carga deixa. Curva única, de 0,47 V a 0,79 V: inversão mais fraca abre a faixa.
+- **Offset por mismatch** (mV): σ(V_os) = A_VT/√(2·W·L). O √2 vem de somar duas variâncias — num par, as duas áreas não casam de verdade. É o limite prático do circuito: 1,36 mV em L = 0,13 µm contra 0,08 mV em L = 1 µm. É por isso que par diferencial quase nunca usa a largura mínima.
+
+O ganho diferencial |A_vd| = g_m·(r_o1 ∥ r_o4) fica no cartão de ponto, sem gráfico: em meio-circuito diferencial o dreno de M2 é um terra virtual e não carrega a saída, então o resultado é o mesmo do fonte comum com a mesma carga — repetir a curva não acrescentaria nada.
+
+Cauda e espelho são polarizados por tensão, com g_m/I_D fixo em 12 V⁻¹, e usam L = min(1 µm, 2·L), porque r_o da cauda limita a rejeição e r_o da carga limita o ganho. O CMRR mostrado é o ideal de cauda perfeita: não inclui a degradação por mismatch nem pelo ruído da própria fonte de cauda, que é o que costuma dominá-lo em silício — o guia diz isso na letra miúda.
 
 ## Ruído
 
@@ -139,7 +153,7 @@ A última desigualdade pode impor limite inferior **ou superior** de ID; interva
 
 ## Arquitetura da interface
 
-`src/labUi.jsx` concentra o que os três blocos compartilham: o gráfico de curva única por métrica (`LabChart`, com `evaluate(gm/ID, L)` injetado), o slider de gm/ID, o seletor de comprimento, o cartão de métrica e o diálogo modal com armadilha de foco. `src/LabShell.jsx` desenha menu lateral e barra superior, marcando o bloco ativo e navegando por hash. `TradeoffChart.jsx` (antes `AreaCurrentChart.jsx`) desenha a grandeza por L em escala log e, por padrão, um segundo painel com a corrente: recebe `evaluate`, as chaves, os rótulos e a faixa logarítmica por props, então o mesmo componente serve à área de gate do fonte comum (dois painéis) e à largura do espelho (`showCurrent={false}`, um painel só).
+`src/labUi.jsx` concentra o que os quatro blocos compartilham: o gráfico de curva única por métrica (`LabChart`, com `evaluate(gm/ID, L)` injetado), o slider de gm/ID, o seletor de comprimento, o cartão de métrica e o diálogo modal com armadilha de foco. `src/LabShell.jsx` desenha menu lateral e barra superior, marcando o bloco ativo e navegando por hash. `TradeoffChart.jsx` (antes `AreaCurrentChart.jsx`) desenha a grandeza por L em escala log e, por padrão, um segundo painel com a corrente: recebe `evaluate`, as chaves, os rótulos e a faixa logarítmica por props, então o mesmo componente serve à área de gate do fonte comum (dois painéis) e à largura do espelho (`showCurrent={false}`, um painel só).
 
 ## Próxima etapa: caracterização real
 
