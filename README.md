@@ -1,6 +1,6 @@
 # gm/ID lab
 
-Laboratório web em português para explorar dimensionamento CMOS pelo método gm/ID. Primeiro experimento: fonte comum NMOS com fonte de corrente ideal como carga. Segundo experimento: espelho de corrente NMOS com razão 1:1. Terceiro: carga ativa (fonte comum com espelho PMOS). O par diferencial aparece no menu como futura iteração.
+Laboratório web em português para explorar dimensionamento CMOS pelo método gm/ID. Primeiro experimento: fonte comum NMOS com fonte de corrente ideal como carga. Segundo experimento: espelho de corrente NMOS com razão 1:1. Terceiro: carga ativa de um único transistor sobre o fonte comum. O par diferencial aparece no menu como futura iteração.
 
 ## Executar
 
@@ -43,21 +43,21 @@ Os quatro gráficos do fonte comum continuam sendo ganho, headroom, fT e área �
 
 O cartão "Ponto selecionado" resume corrente copiada, mismatch, **W necessária**, compliance mínima e a **folga de saída** (V_DS,out − V_DS,out,mín), que é a margem real antes de M2 sair de saturação. Quando o mismatch ultrapassa a meta didática de 1%, aparece um aviso laranja no lugar da seção de saturação do fonte comum. Exporta CSV próprio (`gmid-espelho-ilustrativo.csv`) e tem guia próprio. Efeito de corpo, razão k:1, mismatch de layout e a dependência de V_DS na saída não são modelados.
 
-## Carga ativa (fonte comum com espelho PMOS)
+## Carga ativa de um único transistor
 
-Terceiro bloco, em `/#/carga-ativa`, com o mesmo controle contínuo (gm/ID, gm fixo em 300 µS), o mesmo seletor de L e C_L = 2 pF fixo. O modelo vive em `src/activeLoadModel.js` e reaproveita `operatingPoint`, então ganho, V_A e headroom vêm da mesma base didática dos outros dois blocos.
+Terceiro bloco, em `/#/carga-ativa`: um NMOS (M1) com **um único PMOS** por cima, como carga, e C_L = 2 pF. Mesmo controle contínuo dos outros blocos (gm/ID, gm fixo em 300 µS) e mesmo seletor de L. O modelo vive em `src/activeLoadModel.js` e reaproveita `operatingPoint`.
 
-A narrativa é a da troca de uma fonte ideal por um transistor. Três gráficos, todos com gm/ID no eixo x:
+A diferença para o fonte comum é o gate da carga. Ele está numa tensão de polarização fixa V_bias, separada do rail de V_DD, então **a sobrecondução da carga não acompanha o gₘ/Iᴅ da entrada**: é constante em 12 V⁻¹ neste modelo. Isso é a vantagem (dá para escolher o ponto da carga de forma independente) e a fragilidade (nada garante a corrente com PVT, ao contrário de um espelho).
 
-- **Ganho do estágio** (V/V): |Aᵥ| = gₘ·r_out com r_out = r_o1 ∥ r_o,carga. A saída vê a impedância do NMOS de entrada **e** a do PMOS do espelho ao mesmo tempo, então o ganho fica entre 37% e 51% do ideal gₘ/gds conforme o L — nunca acima. A perda é a mesma curva do fonte comum com outro rótulo, então o gráfico não repete o anterior: ele mostra o *preço*.
-- **Headroom do par** (V): as duas sobreconduções se empilham entre a fonte e V_DD, V_out ≥ V_OV1 + V_OV,carga ≈ 4/(gₘ/I_D). É a diferença real para o fonte comum, cuja carga ideal não pedia nada. O swing disponível é V_DD menos esse valor.
-- **Banda do estágio** (MHz): f₋₃dB = 1/[2π·r_out·(C_L + C_out)]. Com carga ideal não havia r_out para fechar um polo; aqui a banda do amplificador deixa de ser indefinida. É o primeiro bloco em que a banda real aparece — a f_T dos outros blocos é intrínseca e não é a banda do estágio.
+Três gráficos, todos com gm/ID no eixo x:
 
-Duas consequências que os gráficos tornam visíveis. Primeira: **ganho × banda é constante**, porque ao multiplicar r_out se cancela e sobra GBW = gₘ/(2πC_total) ≈ 23,8 MHz. Alongar L compra ganho e paga com banda e área — não dá para fugir. Segunda: **mais eficiência sobe o ganho** (r_out cresce com η), mas desce a banda e o consumo, enquanto o headroom do par cai e devolve swing.
+- **Headroom do par** (V): V_out ≥ V_OV,1 + V_OV,L ≈ 2/(g_m/I_D) + 0,167 V. É a mesma curva de headroom do fonte comum deslocada por uma constante, e o deslocamento é o preço de empilhar dois transistores. O swing é V_DD menos isso. Curva única, sem dependência de L.
+- **Ruído de entrada** (nV/√Hz): quant pela primeira vez aparece no laboratório. O par gera 4kTγ(g_m1 + g_mL) de corrente de ruído; referido à entrada, o r_out se cancela e resta um fator √(1 + g_mL/g_m1). Com carga ideal volta a ser √(4kTγ/g_m1) = 6,07 nV/√Hz (gm fixo); com a carga são 11,2 nV/√Hz em inversão forte e 7,4 em fraca. Curva única: nem L nem r_out entram, só a razão de g_m.
+- **fT do par** (GHz): min(f_T,entrada; f_T,carga). A fT da carga é fixa (a eficiência dela é fixa) e vira um piso; a da entrada cai com o gₘ/I_D. As quatro curvas de L mostram o cruzamento — em inversão forte a carga limita, em fraca a entrada assume, e abaixo do limite a curva achata.
 
-O espelho é desenhado com L_carga = min(1 µm, 2·L), porque a carga é quem limita o ganho. O PMOS entra com V_A 60% da do NMOS e mobilidade 50%, então a largura do espelho sai 4× a da entrada para a mesma corrente. C_out é um proxy linear em largura, Σ W(0,35 + 0,4L) fF/µm, o mesmo proxy de `src/methodology.js` e não Cgg nem dado de PDK. A banda é de um polo com carga externa resistiva: não há polo de entrada nem Miller completo.
+Ganho, V_A e fT vêm do mesmo modelo didático dos outros blocos. O ganho |Aᵥ| = g_m·(r_o1 ∥ r_o,L) fica abaixo de g_m/gds porque a saída vê as duas impedências ao mesmo tempo; ele aparece no cartão de ponto mas não tem gráfico próprio, porque repetiria a curva de ganho do fonte comum com outro rótulo.
 
-O cartão "Ponto selecionado" resume ganho, ganho ideal, banda, headroom do par e área do par. Exporta CSV próprio (`gmid-carga-ativa-ilustrativo.csv`) e tem guia próprio.
+O cartão resume headroom do par, swing, ruído, fT do par e ganho. O guia chama de forma explícita o que o modelo não cobre: só ruído térmico de canal (γ = 2/3, T = 300,15 K), sem 1/f, sem ruído da fonte de bias e sem ruído da carga externa; V_bias é um ponto DC assumido, sem variação de PVT nem efeito de corpo.
 
 ## Ruído
 

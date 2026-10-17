@@ -7,60 +7,41 @@ import { ACTIVE_LOAD, ACTIVE_METRICS, activeLoadPoint } from './activeLoadModel'
 
 const evaluate = (efficiency, length) => activeLoadPoint(efficiency, length);
 
-// Fonte comum com carga em espelho de corrente PMOS, na mesma gramática do lab
-// do fonte comum: transistor com seta de canal, barra de gate à esquerda e lead
-// de fonte em zigue-zague até o terra. M1 é o NMOS de entrada (fonte embaixo);
-// o espelho PMOS tem as fontes em V_DD, por isso o zigue-zague fica no topo.
-// colunas: x = 110 (M1), 170 e 230 (espelho PMOS), 250 (C_L na saída)
-function ActiveSchematic({ current, length, efficiency }) {
+// Dois transistores, na mesma gramática do lab do fonte comum: canal vertical,
+// barra de gate à esquerda, seta de canal e zigue-zague da fonte. No PMOS o
+// zigue-zague fica no topo, porque a fonte vai para V_DD.
+function ActiveSchematic({ current, efficiency }) {
   const ground = (x, y) => <path d={`M${x} ${y}v8M${x - 12} ${y + 8}h24M${x - 8} ${y + 13}h16M${x - 4} ${y + 18}h8`} />;
-  // Mesma gramática do lab do fonte comum: transistor com canal vertical, barra
-  // de gate à esquerda, seta de canal e lead de fonte em zigue-zague. No PMOS o
-  // zigue-zague fica no topo, porque a fonte vai para V_DD.
-  const fet = (x, top, bottom, { pmos = false, gateSide = -1 }) => {
-    const arrowY = top + 26, arrowTo = top + 44;
-    return <>
-      <path d={`M${x} ${top}v${bottom - top}`} />
-      <path d={`M${x} ${arrowY}v${arrowTo - arrowY}m-5-6 5 6 5-6`} />
-      {pmos ? <path d={`M${x} ${top}v-18`} /> : <path d={`M${x} ${bottom}h-17v33h17v20`} />}
-      <path d={`M${x + gateSide * 27} ${top + 18}v32`} />
-    </>;
-  };
-  return <svg className="schematic" viewBox="0 0 300 250" role="img" aria-label="Fonte comum NMOS com carga ativa em espelho de corrente PMOS. O transistor M1 recebe a entrada em v_in e tem a saída tomada no dreno, em v_out, onde também está a carga C_L. O espelho PMOS tem as fontes ligadas em V_DD; M3 é diodo-conectado e M4 vai para a saída, e uma fonte de corrente ideal gera I_bias no nó dos gates.">
+  const fet = (x, top, bottom, { pmos = false } = {}) => <>
+    <path d={`M${x} ${top}v${bottom - top}`} />
+    <path d={`M${x} ${top + 26}v18m-5-6 5 6 5-6`} />
+    {pmos ? <path d={`M${x} ${top}v-30`} /> : <path d={`M${x} ${bottom}h-17v33h17v20`} />}
+    <path d={`M${x - 27} ${top + 18}v32`} />
+  </>;
+  return <svg className="schematic" viewBox="0 0 300 210" role="img" aria-label="Fonte comum NMOS com um único transistor PMOS como carga ativa. M1 recebe a entrada em v_in e tem a saída tomada no dreno, em v_out, onde fica a carga C_L. O gate da carga está numa tensão de polarização fixa V_bias, separada do rail de V_DD, então a corrente é imposta pelo transistor e não por um espelho.">
     <g fill="none" stroke="#42536b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M150 22h100" />
-      {/* espelho PMOS: M3 diodo-conectado (x=170) e M4 no ramo de saida (x=230) */}
-      {fet(170, 40, 90, { pmos: true, gateSide: -1 })}
-      {fet(230, 40, 90, { pmos: true, gateSide: 1 })}
-      <path d="M170 90v15M143 90v15M257 90v15M143 105h114" />
-      <path d="M230 90h50v40" />
-      {/* fonte de corrente ideal de bias, no nó dos gates */}
-      <path d="M205 22v22M205 76v29" />
-      <circle cx="205" cy="60" r="16" />
-      <path d="M205 70V54m-4 4 4-4 4 4" />
-      {/* no de saida: dreno de M1, dreno de M4 e C_L */}
-      <path d="M110 130h170M250 130v20M243 150h14M246 154h8" />
-      {ground(250, 154)}
-      {/* M1: NMOS de entrada, fonte ao terra */}
-      {fet(110, 130, 175, { pmos: false, gateSide: -1 })}
-      <path d="M104 190h-11m4-4-4 4 4 4" />
-      {ground(110, 228)}
-      <path d="M36 164h47" />
-      <path d="M165 22h22M195 22h22M225 22h22" />
-      <circle cx="170" cy="105" r="3" fill="#42536b" /><circle cx="110" cy="130" r="3" fill="#42536b" />
+      {/* rails separados: V_DD alimenta a fonte da carga; V_bias polariza o gate dela */}
+      <path d="M186 30h64M92 30h56v52h81" />
+      {fet(200, 60, 120, { pmos: true })}
+      {fet(120, 120, 170)}
+      <path d="M40 154h53" />
+      {/* no de saida: dreno de M1 e dreno de M_L, com C_L */}
+      <path d="M120 120h130M240 120v18M233 138h14M236 142h8" />
+      <path d="M104 186h-11m4-4-4 4 4 4" />
+      {ground(120, 198)}
+      {ground(240, 142)}
+      <circle cx="120" cy="120" r="3" fill="#42536b" />
     </g>
     <g fontFamily="inherit" fontSize="11" fill="#728096">
-      <text x="104" y="18">Vᴅᴅ = 1,2 V</text>
-      <text x="176" y="74" fill="#344b65">M₃</text>
-      <text x="236" y="74" fill="#344b65">M₄</text>
-      <text x="56" y="150" fill="#344b65">M₁</text>
-      <text x="14" y="160" fill="#df7037">vᵢₙ</text>
-      <text x="150" y="122" fill="#df7037">v_out</text>
-      <text x="238" y="176" fill="#4b5f78">C_L</text>
-      <text x="214" y="44" fill="#7a6a94">I_bias</text>
-      <text x="14" y="206">I_D = {fmt(current)} µA</text>
-      <text x="14" y="244">gₘ/Iᴅ = {fmt(efficiency)} V⁻¹</text>
-      <text x="212" y="244">L = {fmt(length, 2)} µm</text>
+      <text x="192" y="22">Vᴅᴅ = 1,2 V</text>
+      <text x="94" y="22" fill="#7a6a94">V_bias</text>
+      <text x="208" y="96" fill="#344b65">M_L</text>
+      <text x="62" y="138" fill="#344b65">M₁</text>
+      <text x="14" y="150" fill="#df7037">vᵢₙ</text>
+      <text x="128" y="112" fill="#df7037">v_out</text>
+      <text x="228" y="168" fill="#4b5f78">C_L</text>
+      <text x="14" y="200">I_D = {fmt(current)} µA</text>
+      <text x="240" y="200">gₘ/Iᴅ = {fmt(efficiency)} V⁻¹</text>
     </g>
   </svg>;
 }
@@ -73,14 +54,14 @@ function ActiveLoadPage() {
   const regime = efficiency < 10 ? 'Inversão forte' : efficiency <= 20 ? 'Inversão moderada' : 'Inversão fraca';
   function reset() { setEfficiency(15); setLength(.5); }
   function exportCSV() {
-    const rows = ['# Carga ativa: CS com espelho PMOS; NAO sao dados do PDK IHP SG13G2; modelo didatico; gm fixo 300 uS; espelho 2x mais longo, mobilidade 0,5, VA 0,6 do NMOS', 'gm_id_V-1,L_um,L_carga_um,ID_uA,W_in_um,W_load_um,ro_in_kOhm,ro_load_kOhm,rout_kOhm,gain_V_V,ganho_ideal_V_V,razao_ganho,headroom_par_V,swing_V,Cout_fF,f_3dB_MHz,gbw_MHz,area_par_um2'];
-    LENGTHS.forEach(l => { for (let i = 0; i <= 100; i++) { const e = 5 + i * .2, p = evaluate(e, l); rows.push([e, l, p.loadLength, p.current, p.input.width, p.load.width, p.ro, p.roLoad, p.rout, p.gain, p.idealGain, p.gainRatio, p.headroom, p.swing, p.cOut, p.bandwidth, p.gbw, p.pairArea].join(',')); } });
+    const rows = [`# Carga ativa de um unico transistor sobre o CS; NAO sao dados do PDK IHP SG13G2; modelo didatico; gm fixo 300 uS; carga com g_m/I_D fixo em ${ACTIVE_LOAD.loadEfficiency} V-1 e VA 0,6 do NMOS`, 'gm_id_V-1,L_um,ID_uA,W_in_um,W_load_um,ro_in_kOhm,ro_load_kOhm,rout_kOhm,gain_V_V,ganho_ideal_V_V,headroom_entrada_V,headroom_carga_V,headroom_par_V,swing_V,ruido_nV_rtHz,razao_ruido,fT_entrada_GHz,fT_carga_GHz,fT_par_GHz,limitado_por,area_par_um2'];
+    LENGTHS.forEach(l => { for (let i = 0; i <= 100; i++) { const e = 5 + i * .2, p = evaluate(e, l); rows.push([e, l, p.current, p.width, p.loadWidth, p.ro, p.roLoad, p.rout, p.gain, p.intrinsicGain, p.input.headroom, p.load.headroom, p.headroom, p.swing, p.thermalNoise, p.noiseRatio, p.ftInput, p.ftLoad, p.ft, p.limitedBy, p.pairArea].join(',')); } });
     const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a'); a.href = url; a.download = 'gmid-carga-ativa-ilustrativo.csv'; a.click(); URL.revokeObjectURL(url);
   }
   return <>
     <LabShell activeKey="al" version="EXPERIMENTO 03" onHelp={() => setModal('guide')} onUnavailable={setModal}>
-      <div className="card title-hero"><div className="title-hero-left"><h1>Carga ativa<span className="title-tag">AL</span></h1><button className="secondary-button export" onClick={exportCSV}><Download size={15} /> Exportar curvas</button><button className="data-disclaimer" onClick={() => setModal('data')}><Info size={13} /> Curvas ilustrativas · Não extraídas do PDK</button></div><div className="title-hero-circuit"><div className="card-heading"><h2>Circuito</h2><span className="neutral-badge">NMOS + PMOS</span></div><ActiveSchematic {...{ current: point.current, length, efficiency }} /><div className="circuit-caption"><span className="small-dot" /> Espelho PMOS · C_L = 2 pF</div><div className="fixed-bias"><p>Vᴅᴅ = 1,2 V · C_L = 2 pF<br />T = 27 °C</p><div className="formula">r_out = r_o1 ∥ r_o,carga</div></div></div></div>
+      <div className="card title-hero"><div className="title-hero-left"><h1>Carga ativa<span className="title-tag">AL</span></h1><button className="secondary-button export" onClick={exportCSV}><Download size={15} /> Exportar curvas</button><button className="data-disclaimer" onClick={() => setModal('data')}><Info size={13} /> Curvas ilustrativas · Não extraídas do PDK</button></div><div className="title-hero-circuit"><div className="card-heading"><h2>Circuito</h2><span className="neutral-badge">NMOS + PMOS</span></div><ActiveSchematic {...{ current: point.current, efficiency }} /><div className="circuit-caption"><span className="small-dot" /> Um transistor de carga · C_L = 2 pF</div><div className="fixed-bias"><p>Vᴅᴅ = 1,2 V · C_L = 2 pF<br />T = 27 °C</p><div className="formula">V_OV,carga = 2/{fmt(ACTIVE_LOAD.loadEfficiency)} V</div></div></div></div>
       <div className="controls-grid">
         <EfficiencyControl {...{ efficiency, setEfficiency, regime }} onReset={reset} />
         <LengthSelector {...{ length, setLength }} />
@@ -89,31 +70,32 @@ function ActiveLoadPage() {
         <div className="plot-header"><h2>{config.title}</h2>{config.symbol && <span className="plot-symbol">{config.symbol}</span>}</div>
         <div className="regime-labels"><span>FORTE</span><span>MODERADA</span><span>FRACA</span></div>
         <LabChart id={`active-${metric}`} config={config} evaluate={(e, l) => evaluate(e, l)[config.key]} {...{ efficiency, setEfficiency, length }} />
-        {metric === 'gain' && <p className="headroom-definition">Com carga ideal o ganho seria gₘ/gds. Aqui a saída vê duas impedâncias em paralelo: a do NMOS de entrada e a do espelho PMOS, por isso o ganho cai para {fmt(100 * point.gainRatio, 0)}% do valor ideal neste ponto.</p>}
-        {metric === 'headroom' && <p className="headroom-definition">As duas sobreconduções se empilham entre a fonte e V_DD: o par inteiro precisa de {fmt(point.headroom, 3)} V, restando {fmt(point.swing, 3)} V de swing. Inversão fraca devolve tensão ao sinal.</p>}
-        {metric === 'bandwidth' && <p className="headroom-definition">Banda de um polo com r_out real: {fmt(point.bandwidth, 3)} MHz neste ponto. O produto ganho × banda é gₘ/(2πC_total) ≈ {fmt(point.gbw, 1)} MHz e não depende de L.</p>}
+        {metric === 'headroom' && <p className="headroom-definition">A carga é polarizada por tensão, então a sua sobrecondução é fixa em {fmt(ACTIVE_LOAD.loadEfficiency, 0)} V⁻¹ e custa {fmt(point.load.headroom, 3)} V. O par inteiro precisa de {fmt(point.headroom, 3)} V de V_DD e sobra {fmt(point.swing, 3)} V de swing — o preço de colocar um transistor em cima do outro.</p>}
+        {metric === 'noise' && <p className="headroom-definition">O par também faz ruído: gₘ,carga/gₘ,1 = {fmt(point.noiseRatio, 2)}, o que multiplica o ruído por {fmt(Math.sqrt(1 + point.noiseRatio), 2)}. Com carga ideal seria {fmt(point.input.thermalNoise, 2)} nV/√Hz; aqui são {fmt(point.thermalNoise, 2)} nV/√Hz.</p>}
+        {metric === 'ft' && <p className="headroom-definition">O sinal não passa mais rápido que a carga. Neste ponto a entrada faz {fmt(point.ftInput, 1)} GHz e a carga {fmt(point.ftLoad, 1)} GHz: quem limita é {point.limitedBy === 'carga' ? 'a carga' : 'a entrada'}. Abaixo do limite, a curva achata.</p>}
       </section>)}
-        <section className="card operating-card summary-card"><div className="operating-top"><h2>Ponto selecionado</h2><span className="selected-length" style={{ color: COLORS[LENGTHS.indexOf(length)] }}>L = {fmt(length, 2)} µm</span></div><div className="metrics-grid five"><Metric label="GANHO" symbol="|Aᵥ| =" value={fmt(point.gain, 1)} unit="V/V" /><Metric label="GANHO IDEAL" symbol="gₘ/gds =" value={fmt(point.idealGain, 1)} unit="V/V" /><Metric label="BANDA" symbol="f₋₃dB =" value={fmt(point.bandwidth, 3)} unit="MHz" /><Metric label="HEADROOM DO PAR" symbol="V_OV1+V_OV2 =" value={fmt(point.headroom, 3)} unit="V" /><Metric label="ÁREA DO PAR" symbol="W₁L + W_L L" value={fmt(point.pairArea, 2)} unit="µm²" /></div></section></div></div>
+        <section className="card operating-card summary-card"><div className="operating-top"><h2>Ponto selecionado</h2><span className="selected-length" style={{ color: COLORS[LENGTHS.indexOf(length)] }}>L = {fmt(length, 2)} µm</span></div><div className="metrics-grid five"><Metric label="HEADROOM DO PAR" symbol="V_OV1+V_OV,L =" value={fmt(point.headroom, 3)} unit="V" /><Metric label="SWING" symbol="V_DD − headroom =" value={fmt(point.swing, 3)} unit="V" /><Metric label="RUÍDO" symbol="e_n =" value={fmt(point.thermalNoise, 2)} unit="nV/√Hz" /><Metric label="fT DO PAR" symbol="min(f_T) =" value={fmt(point.ft, 1)} unit="GHz" /><Metric label="GANHO" symbol="gₘ·r_out =" value={fmt(point.gain, 1)} unit="V/V" /></div></section></div></div>
+      {!point.compliant && <div className="warning"><Info size={17} /> Atenção: as duas sobreconduções somam {fmt(point.headroom, 3)} V e não cabem em V_DD = 1,2 V. O par não opera como está.</div>}
       <footer><span>Modelo didático · Não validado para fabricação</span></footer>
     </LabShell>
     {modal && <LabDialog onClose={() => setModal(null)} title={modal === 'guide' ? 'Do gₘ/Iᴅ à carga ativa' : modal === 'data' ? 'Sobre estas curvas' : modal} icon={modal === 'guide' ? <BookOpen size={25} /> : <FlaskConical size={25} />} actionLabel={modal === 'guide' ? 'Vamos experimentar' : 'Entendido'}>
       {modal === 'guide' ? <>
-        <p>Com carga de corrente ideal, a saída flutuava e o ganho era <strong>gₘ/gds</strong>. Uma carga ativa é um transistor no lugar da fonte ideal: o ganho continua alto, mas agora há um preço — resistência dividida, headroom empilhado e um polo de verdade.</p>
+        <p>Trocar a fonte de corrente ideal por <strong>um único transistor</strong> é a forma mais barata de conseguir ganho alto. O preço vem em três contas: espaço de tensão, ruído e velocidade.</p>
         <ol>
-          <li><strong>O gₘ fica fixo em 300 µS.</strong> A corrente vem de I_D = gₘ/(gₘ/Iᴅ), como nos outros blocos. Só o gₘ/Iᴅ e o L mudam.</li>
-          <li><strong>Ganho: duas impedências em paralelo.</strong> A saída vê r_o do NMOS <em>e</em> r_o do PMOS do espelho ao mesmo tempo: r_out = r_o1 ∥ r_o,carga e |Aᵥ| = gₘ·r_out. O ganho fica sempre abaixo do ideal.</li>
-          <li><strong>O espelho é mais longo que a entrada.</strong> A carga é quem limita o ganho, então ela recebe o dobro de L. O PMOS tem menos mobilidade, então também precisa de largura maior.</li>
-          <li><strong>Headroom empilhado.</strong> As duas sobreconduções se somam entre a fonte e V_DD. Inversão fraca reduz o headroom do par e devolve swing, ao custo de corrente.</li>
-          <li><strong>Banda: agora existe um polo.</strong> Com carga ideal não havia r_out para fechar o polo. Aqui f_−3dB = 1/[2π·r_out·(C_L + C_out)]. Alongar L sobe o ganho e desce a banda.</li>
-          <li><strong>Ganho × banda é constante.</strong> Multiplicando as duas, r_out se cancela: o produto vale gₘ/(2πC_total), ≈ {fmt(point.gbw, 1)} MHz neste modelo. É o preço de fundo para não fugir com L.</li>
+          <li><strong>O gₘ da entrada fica fixo em 300 µS.</strong> A corrente vem de I_D = gₘ/(gₘ/Iᴅ). Só o gₘ/Iᴅ e o L da entrada mudam.</li>
+          <li><strong>A carga é polarizada por tensão, não por corrente.</strong> O gate de M_L está numa tensão fixa, então a sobrecondução dele <strong>não acompanha</strong> o gₘ/Iᴅ escolhido: é constante em {fmt(ACTIVE_LOAD.loadEfficiency, 0)} V⁻¹. Isso é a vantagem — dá para escolher o ponto da carga independentemente — e também a fragilidade: nada garante que a corrente continue certa com PVT.</li>
+          <li><strong>Headroom empilhado.</strong> V_out ≥ V_OV,1 + V_OV,L ≈ 2/(gₘ/Iᴅ) + {fmt(2 / ACTIVE_LOAD.loadEfficiency, 3)} V. Cada transistor leva um pedaço de V_DD, e o swing é o que sobra.</li>
+          <li><strong>A carga faz ruído.</strong> O par gera 4kTγ(g_m1 + g_mL) de corrente de ruído. Referindo à entrada, o r_out se cancela e sobra um fator √(1 + g_mL/g_m1) sobre o ruído de carga ideal. Aqui isso vai de 1,84× em inversão forte a 1,22× em fraca.</li>
+          <li><strong>A carga vira gargalo de velocidade.</strong> A fT da carga é fixa; a da entrada cai com o gₘ/Iᴅ. O par não fica mais rápido que o transistor mais lento, e a curva achata quando a carga assume.</li>
+          <li><strong>Ganho em paralelo.</strong> A saída vê r_o1 ∥ r_o,L, então |Aᵥ| = gₘ·r_out fica abaixo de gₘ/gds. Um espelho de corrente seria melhor aqui — mas é um bloco só, não dois.</li>
         </ol>
-        <div className="formula">r_out = 1/(1/r_o1 + 1/r_o,carga)<br />|Aᵥ| = gₘ·r_out ≤ gₘ/gds<br />V_out ≥ V_OV1 + V_OV,carga<br />f_−3dB = 1/[2π·r_out·(C_L + C_out)]<br />GBW = |Aᵥ|·f_₃dB = gₘ/(2πC_total)</div>
-        <p className="modal-fine">O espelho usa L_carga = min(1 µm, 2·L), V_A 60% da do NMOS e mobilidade 50%. A capacitância de saída é um proxy linear em largura, C_out = Σ W(0,35 + 0,4L) fF/µm, <strong>não Cgg nem dados de PDK</strong>. C_L = 2 pF é fixa. A banda é de um polo, com carga externa resistiva; não há polo de entrada nem Miller completo, e f_−3dB não é f_T. Ganho, V_A e headroom vêm do mesmo modelo didático dos outros blocos, ainda sem caracterização SPICE.</p>
+        <div className="formula">V_OV,L = 2/{fmt(ACTIVE_LOAD.loadEfficiency, 0)} V (fixa)<br />V_out ≥ V_OV,1 + V_OV,L ≈ 2/(gₘ/Iᴅ) + {fmt(2 / ACTIVE_LOAD.loadEfficiency, 3)} V<br />e_n = √[4kTγ/g_m1 · (1 + g_mL/g_m1)]<br />f_T,par = min(f_T,entrada; f_T,carga)<br />|Aᵥ| = gₘ·(r_o1 ∥ r_o,L) ≤ gₘ/gds</div>
+        <p className="modal-fine">O ruído é o de canal do NMOS em aproximação de canal longo, γ = 2/3, T = 300,15 K, e cobre <strong>apenas o ruído térmico</strong>: sem 1/f, sem ruído da fonte de bias e sem ruído da carga externa. A carga usa a mesma densidade do modelo do NMOS, V_A 60% da do NMOS, e o mesmo L da entrada. Ganho, V_A e fT vêm do mesmo modelo didático dos outros blocos, ainda sem caracterização SPICE. A tensão V_bias é um ponto DC assumido e o modelo ignora variação de PVT e efeito de corpo.</p>
       </> : modal === 'data' ? <>
         <p>O IHP SG13G2 é a tecnologia de referência deste laboratório. <strong>As curvas atuais não foram extraídas do PDK.</strong></p>
         <p>Esta versão usa relações analíticas simplificadas, inspiradas no conceito de inversão do EKV, com normalizações ilustrativas. Efeitos de canal curto, capacitâncias parasitas completas e dependência física de temperatura não são modelados.</p>
         <p>O próximo passo é caracterizar os dispositivos com SPICE e substituir o modelo por tabelas de consulta em função de L, Vᴅs, Vɢs e temperatura.</p>
-      </> : <><p>Este bloco fará parte das próximas iterações do laboratório.</p><p>Por enquanto, explore o fonte comum, o espelho de corrente e a carga ativa para entender as relações entre eficiência, impedância e dimensionamento.</p></>}
+      </> : <><p>Este bloco fará parte das próximas iterações do laboratório.</p><p>Por enquanto, explore o fonte comum, o espelho de corrente e a carga ativa para entender as relações entre eficiência, impedência e dimensionamento.</p></>}
     </LabDialog>}
   </>;
 }

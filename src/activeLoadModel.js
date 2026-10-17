@@ -1,65 +1,68 @@
-// Carga ativa: fonte comum com carga em espelho de corrente PMOS.
-// Modelo didático, reusing operatingPoint do fonte comum. NÃO é SPICE nem PDK.
-import { BIAS, designPoint, operatingPoint } from './model.js';
+// Carga ativa de um único transistor: um NMOS (M1) com um PMOS (ML) por cima,
+// alimentados por V_DD. O gate da carga está numa tensão de polarização fixa,
+// então a sua sobrecondução — e portanto a sua eficiência — é constante, e não
+// acompanha o gₘ/Iᴅ escolhido para a entrada.
+// Modelo didático: NÃO é caracterização SPICE nem dados do PDK IHP SG13G2.
+import { BIAS, NOISE, designPoint, operatingPoint } from './model.js';
 
 export const ACTIVE_LOAD = {
-  // O espelho deve ser mais longo que o transistor de entrada: a carga é quem
-  // limita o ganho, então um espelho curto desperdiça a V_A do par.
-  loadLengthFactor: 2,
-  maxLength: 1,
-  // A V_A do PMOS é menor que a do NMOS: a carga é o que limita o ganho, e é
-  // por isso que o espelho é desenhado mais longo que o transistor de entrada.
+  // A carga é polarizada por tensão, não por corrente: a eficiência dela é uma
+  // escolha de projeto, independente da eficiência da entrada.
+  loadEfficiency: 12, // V⁻¹
+  // A V_A do PMOS é menor que a do NMOS, então r_o,carga < r_o1 e o par rende
+  // menos que o ganho intrínseco do transistor de entrada sozinho.
   loadVAFactor: 0.6,
-  // Mobilidade do PMOS ~ metade da do NMOS. Para a mesma corrente e o mesmo
-  // gm/ID, o PMOS precisa de largura dobrada.
-  loadMobility: 0.5,
-  loadCap: 2e-12, // F; carga externa do nó de saída
+  outputCap: 2e-12, // F; carga externa do nó de saída
+  etaTarget: 15, // V⁻¹; eficiência de referência para a alerta de espaço
 };
 
 export function activeLoadPoint(efficiency, length) {
   const input = designPoint(efficiency, length);
   const current = input.current;
-  const loadLength = Math.min(ACTIVE_LOAD.maxLength, length * ACTIVE_LOAD.loadLengthFactor);
-  // operatingPoint não distingue NMOS de PMOS: o ponto do espelho é calculado
-  // como se fosse NMOS e só a largura é corrigida pela mobilidade menor.
-  const base = operatingPoint(efficiency, loadLength, current, BIAS.vds);
-  const load = { ...base, width: base.width / ACTIVE_LOAD.loadMobility, area: base.width / ACTIVE_LOAD.loadMobility * loadLength };
+  const load = operatingPoint(ACTIVE_LOAD.loadEfficiency, length, current, BIAS.vds);
 
-  // r_out do nó de saída: NMOS de entrada em paralelo com o PMOS do espelho
-  const roInput = input.ro;
-  const roLoad = (ACTIVE_LOAD.loadVAFactor * (3 + loadLength * 19) * (0.7 + 0.3 * BIAS.vds / 0.6)) / current * 1000;
-  const rout = 1 / (1 / roInput + 1 / roLoad); // kΩ
+  // A saída vê as duas impedências ao mesmo tempo.
+  const roLoad = ACTIVE_LOAD.loadVAFactor * load.ro; // kΩ
+  const rout = 1 / (1 / input.ro + 1 / roLoad); // kΩ
   const gain = input.gm * rout / 1000; // V/V
-  const idealGain = input.intrinsicGain;
-  const gainRatio = gain / idealGain;
 
-  // O par precisa caber em V_DD: as duas sobreconduções empilhadas.
+  // As duas sobreconduções se empilham; a da carga é constante.
   const headroom = input.headroom + load.headroom;
   const swing = BIAS.vdd - headroom;
-  // O par empilha as duas sobreconduções, então quem limita é V_DD, não V_DS.
   const compliant = BIAS.vdd >= headroom;
+  // A carga também rouba espaço: em inversão forte a entrada e a carga juntas
+  // podem não caber em V_DD.
+  const crowded = headroom > 0.5 * BIAS.vdd;
 
-  // C_out do nó: parasitas dos dois PLUS a carga externa.
-  const capPerWidth = 0.35 + 0.4 * length;
-  const cOut = input.width * capPerWidth + load.width * (0.35 + 0.4 * loadLength); // fF
-  const cTotal = cOut * 1e-15 + ACTIVE_LOAD.loadCap;
-  const bandwidth = 1 / (2 * Math.PI * rout * 1000 * cTotal) / 1e6; // MHz
-  // O produto ganho × banda perde o r_out: depende só de gₘ e das capacitâncias.
-  const gbw = input.gm * 1e-6 / (2 * Math.PI * cTotal) / 1e6; // MHz
+  // Ruído referido à entrada. O par gera 4kTγ(g_m1 + g_m,carga) de corrente de
+  // ruído; dividindo pelo ganho g_m1·r_out, o r_out se cancela:
+  //   e_n = sqrt(4kTγ/g_m1 · (1 + g_m,carga/g_m1)).
+  // Com carga ideal (g_m,carga = 0) volta a ser sqrt(4kTγ/g_m1).
+  const noiseRatio = ACTIVE_LOAD.loadEfficiency / efficiency; // g_mL/g_m1
+  const thermalNoise = input.thermalNoise * Math.sqrt(1 + noiseRatio); // nV/√Hz
+
+  // fT do par é a do transistor mais lento: o sinal não passa mais rápido que
+  // a carga. Com a entrada em L fixo, a corrente acompanha o gₘ/Iᴅ e a fT da
+  // entrada cai; a carga fica num piso que não depende do gₘ/Iᴅ.
+  const ftInput = input.ft;
+  const ftLoad = load.ft;
+  const ft = Math.min(ftInput, ftLoad);
+  const limitedBy = ftLoad < ftInput ? 'carga' : 'entrada';
 
   return {
     ...input, length,
-    input, load,
-    loadLength, roLoad, rout,
-    gain, idealGain, gainRatio,
-    headroom, swing, compliant,
-    cOut, cTotal, bandwidth, gbw,
+    input, load, roLoad, rout,
+    gain, intrinsicGain: input.intrinsicGain,
+    headroom, swing, compliant, crowded,
+    noiseRatio, thermalNoise,
+    ftInput, ftLoad, ft, limitedBy,
     pairArea: input.area + load.area,
+    loadWidth: load.width,
   };
 }
 
 export const ACTIVE_METRICS = {
-  gain: { key: 'gain', title: 'Ganho do estágio', symbol: '|Aᵥ| = gₘ·(r_o1 ∥ r_o,carga)', unit: 'V/V' },
-  headroom: { key: 'headroom', title: 'Headroom do par', symbol: 'Vₒᵤₜ ≥ V_OV1 + V_OV,carga', unit: 'V', shared: true },
-  bandwidth: { key: 'bandwidth', title: 'Banda do estágio', symbol: 'f₋₃dB = 1/[2π(r_o1 ∥ r_o,carga)(C_L + C_out)]', unit: 'MHz' },
+  headroom: { key: 'headroom', title: 'Headroom do par', symbol: 'V_OV1 + V_OV,carga', unit: 'V', shared: true },
+  noise: { key: 'thermalNoise', title: 'Ruído de entrada', symbol: 'e_n = √[4kTγ/g_m1·(1 + g_mL/g_m1)]', unit: 'nV/√Hz', shared: true },
+  ft: { key: 'ft', title: 'fT do par', symbol: 'min(f_T,entrada; f_T,carga)', unit: 'GHz' },
 };
