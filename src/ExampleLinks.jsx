@@ -7,8 +7,8 @@ import { BLOCK_EXAMPLES } from './blockExamples';
 // mostram o guia do próprio bloco. Cada página lista só os seus exemplos.
 const HEADINGS = {
   mirror: { title: 'Dimensione um espelho de corrente', note: 'Precisão, compliance e área.' },
-  active: { title: 'Dimensione uma carga ativa', note: 'Ganho, headroom e ruído.' },
-  diff: { title: 'Dimensione um par diferencial', note: 'Ganho, ruído e linearidade.' },
+  active: { title: 'Dimensione uma carga ativa', note: 'Corrente, largura e ganho.' },
+  diff: { title: 'Dimensione um par diferencial', note: 'Frequência, largura e corrente de cauda.' },
 };
 
 export default function ExampleLinks({ block }) {

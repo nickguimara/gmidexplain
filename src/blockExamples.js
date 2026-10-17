@@ -1,123 +1,179 @@
-// Guided, didactic examples for the three selection blocks. Each one follows the
-// step structure of a worked example from Jespers & Murmann, adapted to the same
-// illustrative model used by the labs. Numbers are NOT PDK data and are NOT a
-// numerical reproduction of the book's tables.
-import { BIAS, designPoint } from './model.js';
+// First-order teaching adaptations, not reproductions of the book's PDK data.
+import { BIAS, operatingPoint } from './model.js';
 import { MIRROR, mirrorPoint } from './mirrorModel.js';
 import { ACTIVE_LOAD, activeLoadPoint } from './activeLoadModel.js';
-import { DIFF, differentialPoint } from './differentialModel.js';
-import { quantity, texNumber as n } from './guideMath.js';
+import { quantity as q, texNumber as n } from './guideMath.js';
 
-export const BOOK = {
-  title: 'Jespers & Murmann · Systematic Design of Analog CMOS Circuits (2017)',
-  url: 'https://doi.org/10.1017/9781108125840',
-};
+export const BOOK = { title: 'Jespers & Murmann · Systematic Design of Analog CMOS Circuits (2017)', url: 'https://doi.org/10.1017/9781108125840' };
+export const DIFF_GUIDE = { fu: 10e6, load: 5e-12, loadEfficiency: 10, loadLength: .5 };
 
-// Mirror: add the Δβ/β term to the threshold term, both from the sized area.
 export function mirrorGuidePoint(efficiency, length) {
-  const point = mirrorPoint(efficiency, length);
-  const sigmaVt = point.error;                                    // fração (1σ)
-  const sigmaBeta = MIRROR.mismatchBeta / Math.sqrt(point.area);  // fração (1σ)
+  const p = mirrorPoint(efficiency, length);
+  const sigmaVt = p.error, sigmaBeta = MIRROR.mismatchBeta / Math.sqrt(p.area);
   const sigmaTotal = Math.hypot(sigmaVt, sigmaBeta);
-  return { ...point, sigmaVt, sigmaBeta, sigmaTotal, sigmaTotalPercent: sigmaTotal * 100 };
+  return { ...p, sigmaVt, sigmaBeta, sigmaTotal, sigmaTotalPercent: 100 * sigmaTotal };
 }
 
-// Active load: the CS input stage is a fixed reference; compare against it.
 export function activeGuidePoint(efficiency, length) {
-  const point = activeLoadPoint(efficiency, length);
-  const referenceGain = designPoint(ACTIVE_LOAD.inputEfficiency, ACTIVE_LOAD.inputLength).intrinsicGain;
-  return { ...point, referenceGain, gainPercentOfIgs: point.gain / referenceGain * 100, gainLossPercent: (1 - point.gain / referenceGain) * 100 };
+  const p = activeLoadPoint(efficiency, length);
+  const referenceGain = p.input.intrinsicGain;
+  return { ...p, width: p.loadWidth, density: p.load.density, gm: p.loadGm, referenceGain,
+    gainPercentOfIgs: 100 * p.gain / referenceGain, gainLossPercent: 100 * (1 - p.gain / referenceGain) };
 }
 
-// Quadros finais (KaTeX) testáveis fora do React.
-export function mirrorLedger(point, efficiency) {
-  return String.raw`\begin{aligned}L&=${quantity(point.length, String.raw`\mu\mathrm m`)}\\ \frac{g_m}{I_D}&=${quantity(efficiency, String.raw`\mathrm{V^{-1}}`)}\\ I_{\rm ref}&=I_{\rm out}=20\,\mu\mathrm A\\ W&=W_1=W_2\approx${quantity(point.width, String.raw`\mu\mathrm m`, 3)}\\ \sigma_{\Delta I/I}&\approx${n(point.sigmaTotalPercent, 3)}\%\end{aligned}`;
+// Ex. 3.11/3.12: external-load-only gm -> ID -> JD -> W, not fixed ID.
+export function diffGuidePoint(efficiency, length) {
+  const gm = 2 * Math.PI * DIFF_GUIDE.fu * DIFF_GUIDE.load * 1e6;
+  const current = gm / efficiency;
+  const input = operatingPoint(efficiency, length, current, BIAS.vds);
+  const load = operatingPoint(DIFF_GUIDE.loadEfficiency, DIFF_GUIDE.loadLength, current, BIAS.vds);
+  const roLoad = ACTIVE_LOAD.loadVAFactor * load.ro;
+  const gain = gm / 1000 / (1 / input.ro + 1 / roLoad);
+  return { ...input, input, load, efficiency, length, current, gm, gain, tailCurrent: 2 * current,
+    pairArea: 2 * input.area, loadWidth: load.width, roLoad, compliant: input.saturated && load.saturated };
 }
 
-export function activeLedger(point, efficiency) {
-  return String.raw`\begin{aligned}L_L&=${quantity(point.length, String.raw`\mu\mathrm m`)}\\ \left(\frac{g_m}{I_D}\right)_L&=${quantity(efficiency, String.raw`\mathrm{V^{-1}}`)}\\ I_D&=20\,\mu\mathrm A\\ W_L&\approx${quantity(point.loadWidth, String.raw`\mu\mathrm m`, 3)}\\ A_{v0}&\approx${n(point.gain, 2)}\end{aligned}`;
+const um = String.raw`\mu\mathrm m`, ua = String.raw`\mu\mathrm A`;
+export function mirrorLedger(p, e) {
+  return String.raw`\begin{aligned}L&=${q(p.length, um)}\\g_m/I_D&=${q(e, String.raw`\mathrm{V^{-1}}`)}\\I_{\rm ref}&=20\,\mu\mathrm A\\W_1=W_2&=${q(p.width, um, 3)}\\\sigma_{\Delta I/I}&=${n(p.sigmaTotalPercent, 3)}\%\end{aligned}`;
+}
+export function activeLedger(p, e) {
+  return String.raw`\begin{aligned}L_L&=${q(p.length, um)}\\(g_m/I_D)_L&=${q(e, String.raw`\mathrm{V^{-1}}`)}\\I_D&=${q(p.current, ua)}\\W_L&=${q(p.loadWidth, um, 3)}\\|A_{v0}|&=${n(p.gain)}\end{aligned}`;
+}
+export function diffLedger(p, e) {
+  return String.raw`\begin{aligned}L&=${q(p.length, um)}\\(g_m/I_D)_{in}&=${q(e, String.raw`\mathrm{V^{-1}}`)}\\g_{m1,2}&=${q(p.gm, String.raw`\mu\mathrm S`)}\\I_{D1,2}&=${q(p.current, ua)}\\I_{\rm tail}&=${q(p.tailCurrent, ua)}\\W_1=W_2&=${q(p.width, um, 3)}\end{aligned}`;
 }
 
-export function diffLedger(point, efficiency) {
-  return String.raw`\begin{aligned}L&=${quantity(point.length, String.raw`\mu\mathrm m`)}\\ \left(\frac{g_m}{I_D}\right)_{in}&=${quantity(efficiency, String.raw`\mathrm{V^{-1}}`)}\\ I_{D1,2}&=20\,\mu\mathrm A,\qquad I_{\rm tail}=40\,\mu\mathrm A\\ W&\approx${quantity(point.input.width, String.raw`\mu\mathrm m`, 3)}\\ g_{m1,2}&\approx${quantity(point.input.gm, String.raw`\mu\mathrm S`, 0)}\end{aligned}`;
+// A record of explicit confirmations, never a preview of the defaults.
+export function guideChecklist(example, p, efficiency, completed) {
+  return [
+    { key: 'length', symbol: 'L', label: 'Comprimento escolhido', value: completed >= 2 ? p.length : null, unit: um },
+    { key: 'efficiency', symbol: String.raw`g_m/I_D`, label: 'Eficiência escolhida', value: completed >= 2 ? efficiency : null, unit: String.raw`\mathrm{V^{-1}}` },
+    { key: 'current', symbol: 'I_D', label: 'Corrente por transistor', value: completed >= (example.block === 'diff' ? 2 : 1) ? p.current : null, unit: ua },
+    { key: 'width', symbol: 'W', label: 'Largura calculada', value: completed >= 3 ? p.width : null, unit: um },
+  ];
 }
+
+const steps = (...pairs) => pairs.map(([title, text], i) => ({ key: ['requirements', 'point', 'geometry', 'result', 'verify'][i], label: ['Requisito', 'Escolha', 'Largura', 'Resultado', 'Verificação'][i], title, text }));
 
 export const BLOCK_EXAMPLES = [
   {
     slug: 'espelho-mismatch', number: '05', block: 'mirror', labRoute: '#/espelho', labLabel: 'Laboratório do espelho',
-    tag: 'PRECISÃO E CÓPIA',
-    title: 'Espelho de corrente: copiar 20 µA com precisão',
-    reference: 'Exemplo 4.7 — Random Mismatch Estimation in a Current Mirror',
-    application: 'Espelho NMOS 1:1 que copia a corrente de referência de um bloco de polarização.',
-    brief: 'Copie 20 µA com desvio de 1σ próximo de 1% e mantenha 0,6 V de compliance na saída.',
-    decision: 'Escolha gm/ID e L para equilibrar mismatch, headroom e área. A meta de 1% é um critério didático, não um ótimo imposto.',
-    start: { efficiency: 15, length: .5 },
-    evaluate: mirrorGuidePoint,
-    errorTarget: MIRROR.errorTarget,
-    efficiencyEnds: ['5 V⁻¹ · menos área, mais mismatch (Δβ)', '25 V⁻¹ · mais área, mais compliance'],
+    tag: 'ESPELHO · PRECISÃO', title: 'Espelho: da corrente ao erro de cópia',
+    reference: '§4.3.2 e Exemplo 4.7 · pp. 153–155',
+    application: 'Dimensione um espelho 1:1 e estime o erro aleatório de corrente.',
+    adaptation: 'O livro estima mismatch de uma geometria dada. Aqui acrescentamos o dimensionamento para uma corrente especificada. Coeficientes e números são ilustrativos.',
+    limitations: 'Termos de threshold e fator de corrente independentes; coeficientes da diferença do par, sem √2 adicional. A estimativa de mismatch supõe VDS iguais. Erro sistemático por diferença de VDS não está incluído. Saturação usa o proxy de corrente direta de 99%, não 2/(gm/ID).',
+    validation: 'Verifique o ponto DC e a igualdade de VDS; depois use Monte Carlo de mismatch no PDK. 1σ não é erro máximo nem garantia de rendimento.',
+    start: { efficiency: 15, length: .5 }, evaluate: mirrorGuidePoint, ledger: mirrorLedger,
+    efficiencyEnds: ['Mais forte · menor área', 'Mais fraca · menor tensão exigida'],
     spec: [
-      { label: 'Corrente copiada', latex: String.raw`I_{\rm ref}=I_{\rm out}=20\,\mu\mathrm A` },
-      { label: 'Razão de espelho', latex: String.raw`W_2/W_1=1` },
-      { label: 'Compliance de saída', latex: String.raw`V_{DS,\rm out}\ge 0{,}6\,\mathrm V` },
-      { label: 'Meta de erro 1σ', latex: String.raw`\sigma_{\Delta I/I}\lesssim 1\%` },
+      { label: 'Corrente nominal', latex: String.raw`I_{\rm ref}=20\,\mu\mathrm A` },
+      { label: 'Cópia nominal', latex: String.raw`W_2/W_1=1` },
+      { label: 'Tensão disponível', latex: String.raw`V_{DS,2}=0{,}6\,\mathrm V` },
+      { label: 'Meta didática · 1σ', latex: String.raw`\sigma_{\Delta I/I}\le1\%` },
     ],
-    steps: [
-      { key: 'requirements', label: 'Objetivo', title: 'Fixe a corrente e a meta de matching.', text: 'Um espelho 1:1 só é exato se os dois transistores forem idênticos. A corrente é imposta (I_ref = I_out = 20 µA); o que resta escolher é o nível de inversão e o comprimento, que definem área, mismatch e a tensão mínima de saída.' },
-      { key: 'point', label: 'gₘ/Iᴅ e L', title: 'Escolha o nível de inversão e o comprimento.', text: 'A área cresce com gm/ID (W ∝ (gm/ID)²) e com L. Mais área reduz o mismatch; mais gm/ID reduz a tensão de compliance exigida. Compare sensibilidade a área fixa e compliance antes de decidir.' },
-      { key: 'geometry', label: 'Geometria', title: 'Calcule a largura a partir da densidade de corrente.', text: 'A corrente é fixa. Lida a densidade ID/W no ponto escolhido, a largura vem de W = I_ref/(ID/W). A área de gate é W·L por transistor.' },
-      { key: 'mismatch', label: 'Mismatch', title: 'Some os termos ΔV_T e Δβ em variância.', text: 'Como no Exemplo 4.7, o erro 1σ de corrente combina a diferença de threshold e a diferença de fator de corrente: σ² = σ²(ΔV_T) + σ²(Δβ/β). O termo ΔV_T cresce com gm/ID; ambos caem com a raiz da área.' },
-      { key: 'verify', label: 'Verificação', title: 'Confirme compliance, matching e área.', text: 'Recoloque os números no modelo: a tensão da saída precisa exceder a compliance estimada e o erro 1σ precisa caber na meta. Valide depois com SPICE e o PDK.' },
-    ],
+    steps: steps(
+      ['Copiar corrente não é copiar com erro zero.', 'Use dois transistores de mesma geometria. A corrente nominal é dada; a precisão depende da sensibilidade à variação e da área de cada transistor.'],
+      ['Escolha o ponto do espelho.', 'Compare os comprimentos. A área final será calculada para a mesma corrente; não confunda essa comparação com manter a área fixa. Os valores iniciais são apenas uma sugestão.'],
+      ['Leia a densidade e calcule a largura.', 'Consulte a densidade no ponto escolhido. Divida a corrente de referência por essa densidade e use a mesma largura nos dois transistores.'],
+      ['Calcule o erro de corrente de 1σ.', 'Os erros relativos por threshold e por fator de corrente são independentes: some suas variâncias, não seus desvios-padrão.'],
+      ['Confira a meta e a tensão disponível.', 'A meta de precisão é estatística. A verificação de saturação é apenas uma estimativa; ainda falta validar o circuito real.']),
   },
   {
     slug: 'carga-ativa-ganho', number: '06', block: 'active', labRoute: '#/carga-ativa', labLabel: 'Laboratório da carga ativa',
-    tag: 'GANHO E HEADROOM',
-    title: 'Carga ativa: ganho contra headroom',
-    reference: 'Exemplo 3.8 — Sizing a CS Stage with Active Load',
-    application: 'Carga PMOS no dreno de um CS para elevar o ganho de tensão.',
-    brief: 'Some um PMOS de carga ao CS de referência (gm = 300 µS) e quantifique a perda de ganho, o headroom e o ruído adicional.',
-    decision: 'Escolha gm/ID da carga para equilibrar faixa de saída e ruído — o livro adota ≈10 V⁻¹. Neste modelo, o comprimento L₂ é o que mais altera o ganho.',
-    start: { efficiency: 10, length: .5 },
-    evaluate: activeGuidePoint,
-    efficiencyEnds: ['5 V⁻¹ · menos ruído, menos faixa', '25 V⁻¹ · mais ruído, mais faixa'],
+    tag: 'CARGA ATIVA · GANHO', title: 'Carga ativa: dimensionar sem perder o ganho de vista',
+    reference: '§3.2.1 e Exemplo 3.8 · pp. 94–97',
+    application: 'Dimensione o PMOS de carga de um fonte comum já polarizado.',
+    adaptation: 'Recorte de primeira ordem do Ex. 3.8: entrada fixa e carga externa dominante. O livro também escolhe a entrada por fT/fu e itera o dimensionamento com as capacitâncias de saída.',
+    limitations: 'Neste proxy, gds/ID depende de L e não de gm/ID. PMOS reutiliza a densidade ilustrativa NMOS e um fator de resistência de saída. Self-loading, polos internos e ruído não fazem parte deste roteiro.',
+    validation: 'Consulte LUTs PMOS reais; recalcule gm e larguras incluindo Cdd da entrada e da carga, como no Ex. 3.8. Verifique DC, AC e excursão em SPICE.',
+    start: { efficiency: 10, length: .5 }, evaluate: activeGuidePoint, ledger: activeLedger,
+    efficiencyEnds: ['Mais forte · mais tensão exigida', 'Mais fraca · maior largura'],
     spec: [
-      { label: 'CS de referência', latex: String.raw`g_{m,1}=300\,\mu\mathrm S` },
-      { label: 'Corrente', latex: String.raw`I_D=20\,\mu\mathrm A` },
-      { label: 'Alimentação', latex: String.raw`V_{DD}=1{,}2\,\mathrm V` },
-      { label: 'Saída quiescente', latex: String.raw`V_{\rm out}=0{,}6\,\mathrm V` },
+      { label: 'Entrada fixada', latex: String.raw`g_{m,1}=300\,\mu\mathrm S` },
+      { label: 'Eficiência da entrada', latex: String.raw`(g_m/I_D)_1=15\,\mathrm{V^{-1}}` },
+      { label: 'Comprimento da entrada', latex: String.raw`L_1=0{,}5\,\mu\mathrm m` },
+      { label: 'Polarização', latex: String.raw`V_{DD}=1{,}2\,\mathrm V,\quad V_{out}=0{,}6\,\mathrm V` },
     ],
-    steps: [
-      { key: 'requirements', label: 'Objetivo', title: 'Fixe o CS de entrada e a alimentação.', text: 'O transistor de entrada M1 é uma referência fixa (gm = 300 µS, gm/ID = 15 V⁻¹, L = 0,5 µm). O novo grau de liberdade é a carga PMOS: seu nível de inversão e seu comprimento. A corrente continua 20 µA.' },
-      { key: 'point', label: 'gₘ/Iᴅ e L da carga', title: 'Escolha o gm/ID e o comprimento da carga.', text: 'A carga adiciona uma condutância gds₂ em paralelo com gds₁, então o ganho cai. Neste modelo, (gds/ID)₂ depende principalmente de L₂, não do gm/ID: o deslizante troca faixa de saída por ruído adicional, enquanto o comprimento define o ganho. O livro ancora o gm/ID da carga em ≈10 V⁻¹.' },
-      { key: 'gain', label: 'Ganho', title: 'Combine as saídas de M1 e da carga.', text: 'O ganho de baixa frequência é gm₁/(gds₁+gds₂). Compare com o ganho do CS com fonte de corrente ideal para medir a perda. Aqui, alongar L₂ reduz gds₂/ID e recupera ganho; o gm/ID da carga quase não muda esse número.' },
-      { key: 'noise', label: 'Ruído da carga', title: 'Some o ruído da carga em potência.', text: 'A carga injeta corrente de ruído que, referida à entrada, vale √(4kTγ g_m,L)/gm₁. Fontes independentes somam como potência. Corrente fixa faz gm,L aumentar com o gm/ID da carga.' },
-      { key: 'verify', label: 'Verificação', title: 'Confirme faixa de saída e velocidade.', text: 'A saída só pode excursionar entre a compliance do NMOS e a da carga PMOS. A fT é do dispositivo de carga, não a banda do amplificador. Refaça as contas no modelo e valide depois com SPICE.' },
-    ],
+    steps: steps(
+      ['A entrada determina a corrente da carga.', 'A carga PMOS conduz a mesma corrente do transistor de entrada. Obtenha essa corrente a partir da transcondutância e da eficiência já definidas.'],
+      ['Escolha a eficiência e o comprimento do PMOS.', 'O livro usa eficiência de carga próxima de 10 V⁻¹ como compromisso de ganho, tensão exigida e ruído. Não é um ótimo universal. Aqui, compare ganho e largura ao mudar L.'],
+      ['Dimensione a largura da carga.', 'Consulte a densidade de corrente do PMOS no ponto escolhido. A corrente já foi definida pela entrada; a largura é a incógnita.'],
+      ['Inclua a condutância de saída da carga.', 'A carga real tem resistência finita: sua condutância soma à da entrada. Por isso, o módulo do ganho é menor que no mesmo fonte comum com carga ideal.'],
+      ['Confira a polarização e registre o projeto.', 'Verifique a saturação dos dois transistores no ponto quiescente. Ganho e faixa estimada são resultados, não metas arbitrárias de passa/falha.']),
   },
   {
     slug: 'par-diferencial-fluxo', number: '07', block: 'diff', labRoute: '#/par-diferencial', labLabel: 'Laboratório do par diferencial',
-    tag: 'ENTRADA DIFERENCIAL',
-    title: 'Par diferencial: da corrente de cauda ao ganho',
-    reference: 'Exemplos 3.11 e 3.12 — Sizing a Differential Pair / Differential Amplifier with Current-Mirror Load',
-    application: 'Estágio de entrada diferencial alimentado por uma cauda de corrente.',
-    brief: 'Dimensione M₁/M₂ para I_D = 20 µA por ramo (cauda de 40 µA) com ganho, ruído e linearidade conhecidos.',
-    decision: 'Escolha gm/ID e L da entrada. As cargas (gm = 240 µS) e a cauda ficam fixas como referências; não há ótimo imposto.',
-    start: { efficiency: 15, length: .5 },
-    evaluate: differentialPoint,
-    hd3Db: DIFF.hd3Db, tailCurrent: DIFF.current * 2,
-    efficiencyEnds: ['5 V⁻¹ · menos gm e área', '25 V⁻¹ · mais gm e área'],
+    tag: 'PAR DIFERENCIAL · DIMENSIONAMENTO', title: 'Par diferencial: da frequência à corrente de cauda',
+    reference: 'Exemplos 3.11 e 3.12 · pp. 105–110',
+    application: 'Obtenha a transcondutância, a corrente por ramo e a largura do par de entrada.',
+    adaptation: 'Fluxo do livro no limite de carga externa dominante. Ao contrário do laboratório de seleção, aqui gm é fixo e a corrente varia com gm/ID. A carga espelhada converte o sinal diferencial em saída simples.',
+    limitations: 'fu ≈ gm/(2πCL) supõe polos não dominantes suficientemente altos. VDS = 0,6 V é assumido nos proxies: não resolvemos VGS, o nó de cauda, efeito de corpo ou modo comum. O ganho inclui a resistência PMOS, mas não os polos do espelho.',
+    validation: 'Resolva source, drain e VSB nas LUTs, como nos Ex. 3.11/3.12. Dimensione a cauda, verifique modo comum, saturação de todos os dispositivos e polo do espelho. Só AC em SPICE confirma fu.',
+    start: { efficiency: 15, length: .5 }, evaluate: diffGuidePoint, ledger: diffLedger,
+    efficiencyEnds: ['Mais forte · maior corrente', 'Mais fraca · menor corrente'],
     spec: [
-      { label: 'Corrente por ramo', latex: String.raw`I_{D1,2}=20\,\mu\mathrm A` },
-      { label: 'Corrente de cauda', latex: String.raw`I_{\rm tail}=2I_D=40\,\mu\mathrm A` },
-      { label: 'Carga PMOS', latex: String.raw`g_{m,L}=240\,\mu\mathrm S` },
-      { label: 'Alvo de distorção', latex: String.raw`\mathrm{HD3}\le -60\,\mathrm{dBc}` },
+      { label: 'Frequência de ganho unitário', latex: String.raw`f_u=10\,\mathrm{MHz}` },
+      { label: 'Carga externa', latex: String.raw`C_L=5\,\mathrm{pF}` },
+      { label: 'Eficiência do espelho PMOS', latex: String.raw`(g_m/I_D)_L=10\,\mathrm{V^{-1}}` },
+      { label: 'Comprimento do espelho', latex: String.raw`L_L=0{,}5\,\mu\mathrm m` },
     ],
-    steps: [
-      { key: 'requirements', label: 'Objetivo', title: 'Fixe a corrente de cauda e as cargas.', text: 'A cauda impõe 20 µA em cada ramo, então I_cauda = 40 µA. As cargas PMOS (gm = 240 µS, L = 1 µm) são referências fixas; o par de entrada é o que dimensionamos. Como no Exemplo 3.12, o ganho de baixa frequência do par com espelho é o de um CS carregado ativamente.' },
-      { key: 'point', label: 'gₘ/Iᴅ e L', title: 'Escolha o gm/ID e o comprimento do par.', text: 'Com corrente fixa, gm = (gm/ID)·I_D cresce com o nível de inversão. Isso melhora o ruído, mas sobe a área e reduz a amplitude linear e a fT. Compare ganho intrínseco, ruído, linearidade e offset.' },
-      { key: 'geometry', label: 'Geometria', title: 'Calcule a largura de M1 e M2.', text: 'A corrente por ramo é fixa. Lida a densidade ID/W no ponto, W = I_D/(ID/W). A área do par é 2·W·L; mais gm/ID exige mais área.' },
-      { key: 'performance', label: 'Desempenho', title: 'Leia ganho, ruído, offset e linearidade.', text: 'O ruído diferencial do par é 8kTγ_n/gm1,2, decrescente com gm/ID. O offset 1σ é A_VT/√(WL). A amplitude linear para HD3 ≤ −60 dBc cai quando gm/ID cresce, no proxy de terceira ordem.' },
-      { key: 'verify', label: 'Verificação', title: 'Confirme cauda, saturação e velocidade.', text: 'A cauda continua em 40 µA e cada ramo em 20 µA. A fT é de cada transistor de entrada, não a banda do estágio. Feche as contas e valide com SPICE e o PDK.' },
-    ],
+    steps: steps(
+      ['Parta da frequência e da carga.', 'Em primeira ordem, a frequência de ganho unitário e a carga externa determinam a transcondutância de cada transistor de entrada.'],
+      ['Escolha a eficiência e o comprimento da entrada.', 'Com a transcondutância definida, a eficiência determina a corrente por ramo. No equilíbrio, a corrente de cauda é o dobro dessa corrente.'],
+      ['Calcule a largura de cada transistor.', 'Consulte a densidade no ponto escolhido e divida a corrente de um ramo por essa densidade. M₁ e M₂ recebem a mesma geometria.'],
+      ['Distinga ganho do transistor e ganho do estágio.', 'O espelho converte a corrente diferencial em saída simples. Em baixa frequência, o ganho depende tanto da resistência da entrada quanto da carga de saída.'],
+      ['Feche as contas, sem confundir estimativa e validação.', 'Recomponha a transcondutância e a corrente de cauda. Recuperar a frequência pela mesma equação é uma conferência algébrica, não uma simulação de banda.']),
   },
 ];
+
+// All teaching equations live here so every step can be checked in strict KaTeX.
+export function guideContent(example, p, efficiency, key) {
+  const result = (label, latex) => ({ label, latex });
+  const isMirror = example.block === 'mirror', isDiff = example.block === 'diff';
+  if (key === 'requirements') {
+    if (isMirror) return { formula: String.raw`I_{out,nom}=I_{ref}\frac{W_2}{W_1}=20\,\mu\mathrm A`, results: [], note: 'Mesmo L para ambos; a razão 1:1 é nominal, não uma garantia de precisão.' };
+    if (isDiff) return {
+      formula: String.raw`g_{m1,2}\approx2\pi f_u C_L`,
+      results: [result('Transcondutância por entrada', String.raw`2\pi\cdot10^7\cdot5\cdot10^{-12}=${q(p.gm, String.raw`\mu\mathrm S`)}`)],
+      note: 'Carga externa dominante; não inclui capacitâncias de saída nem o polo interno do espelho.',
+    };
+    return { formula: String.raw`I_D=\frac{g_{m,1}}{(g_m/I_D)_1}`, results: [result('Corrente da entrada e da carga', String.raw`I_D=\frac{300}{15}=${q(p.current, ua)}`)], note: 'A entrada fica fixa durante este exemplo; só dimensionamos a carga PMOS.' };
+  }
+  if (key === 'point') return {
+    formula: isMirror ? String.raw`\sigma_{\Delta I/I}\propto\frac{1}{\sqrt{WL}}\quad\text{a sensibilidade fixa}` : isDiff ? String.raw`I_{D1,2}=\frac{g_{m1,2}}{(g_m/I_D)_{in}},\qquad I_{tail}=2I_{D1,2}` : String.raw`|A_{v0}|=\frac{g_{m,1}}{g_{ds,1}+g_{ds,L}}`,
+    results: isDiff ? [result('Corrente por ramo · prévia', q(p.current, ua)), result('Corrente de cauda · prévia', q(p.tailCurrent, ua))] : [],
+    note: isMirror ? 'O gráfico usa a área redimensionada para 20 µA, não área fixa. Neste proxy, o termo de threshold fica constante com gm/ID a L fixo; o de fator de corrente diminui com a área.' : isDiff ? 'Confirme o ponto para registrar L, eficiência e corrente. A geometria vem na próxima etapa.' : 'Neste proxy, só L altera gds/ID e o ganho. gm/ID altera a largura e a tensão exigida. O comportamento real deve vir de LUTs PMOS.',
+  };
+  if (key === 'geometry') return {
+    formula: String.raw`J_D=I_D/W,\qquad W=\frac{I_D}{J_D}`,
+    results: [result('Densidade consultada · ilustrativa', String.raw`J_D=${q(p.density, String.raw`\mu\mathrm A/\mu\mathrm m`, 3)}`), result('Largura por transistor', String.raw`W=\frac{${n(p.current, 3)}}{${n(p.density, 3)}}\approx${q(p.width, um, 3)}`)],
+    note: isDiff ? 'Esta é a largura de cada entrada, não a soma do par. A cauda e as cargas precisam de dimensionamento próprio.' : isMirror ? 'M₁ e M₂ recebem a mesma largura e o mesmo comprimento.' : 'No projeto real, consulte a densidade do PMOS, não a do NMOS.',
+  };
+  if (key === 'result' && isMirror) return {
+    formula: String.raw`\begin{aligned}s_{VT}&=\frac{g_m}{I_D}\frac{A_{VT}}{\sqrt{WL}},\quad s_\beta=\frac{A_\beta}{\sqrt{WL}}\\\sigma_{\Delta I/I}&\approx\sqrt{s_{VT}^2+s_\beta^2}\end{aligned}`,
+    results: [result('Contribuição de threshold', String.raw`s_{VT}=${n(p.sigmaVt * 100, 3)}\%`), result('Contribuição de fator de corrente', String.raw`s_\beta=${n(p.sigmaBeta * 100, 3)}\%`), result('Desvio-padrão relativo total', String.raw`\sigma_{\Delta I/I}=${n(p.sigmaTotalPercent, 3)}\%`)],
+    note: 'A_VT = 0,5 mV·µm e A_β = 1%·µm são coeficientes ilustrativos da diferença do par. Verifique qual contribuição domina; não suponha que Δβ seja sempre desprezível.',
+  };
+  if (key === 'result') return {
+    formula: isDiff ? String.raw`|A_{v0}|\approx\frac{g_{m1}}{g_{ds1}+g_{ds,L}},\qquad A_i=\frac{g_{m1}}{g_{ds1}}` : String.raw`|A_{v0}|=\frac{(g_m/I_D)_1}{(g_{ds}/I_D)_1+(g_{ds}/I_D)_L}`,
+    results: [result(isDiff ? 'Ganho intrínseco da entrada' : 'Fonte comum com carga ideal', String.raw`A_i=${n(isDiff ? p.intrinsicGain : p.referenceGain)}`), result('Ganho do estágio · módulo', String.raw`|A_{v0}|\approx${n(p.gain)}`)],
+    note: isDiff ? 'Saída simples com espelho ideal na conversão de corrente: não há fator 1/2 no gm efetivo. O polo do espelho foi omitido.' : 'A redução de ganho é consequência da resistência finita da carga; não imponha a porcentagem de perda do exemplo do livro a este modelo.',
+  };
+  if (isMirror) return {
+    formula: String.raw`\sigma_{\Delta I/I}=${n(p.sigmaTotalPercent, 3)}\%\quad\text{(meta: }1\%\text{)}`,
+    results: [result('Tensão disponível', String.raw`V_{DS,2}=0{,}6\,\mathrm V`), result('Mínimo estimado · proxy 99%', String.raw`V_{DS,min}\approx${q(p.vMinOut, String.raw`\mathrm V`, 3)}`)],
+    note: `${p.precise ? 'A meta estatística é atendida neste modelo.' : 'A meta estatística não é atendida: reveja o ponto e a área.'} ${p.compliant ? 'A tensão disponível supera o mínimo estimado.' : 'Falta tensão para o critério de saturação.'}`,
+  };
+  if (isDiff) return {
+    formula: String.raw`(g_m/I_D)_{in}I_D=${n(efficiency)}\cdot${n(p.current, 3)}\approx${q(p.gm, String.raw`\mu\mathrm S`)}`,
+    results: [result('Corrente de cauda', String.raw`2I_D=${q(p.tailCurrent, ua)}`), result('Frequência recomposta · primeira ordem', String.raw`\frac{g_m}{2\pi C_L}=10\,\mathrm{MHz}`)],
+    note: 'Consistência algébrica apenas. Saturação, modo comum e estabilidade ainda dependem do ponto DC e dos polos reais.',
+  };
+  return {
+    formula: String.raw`V_{DS,1}=V_{SD,L}=0{,}6\,\mathrm V`,
+    results: [result('Mínimo NMOS estimado', String.raw`V_{DS,min,1}\approx${q(p.input.headroom, String.raw`\mathrm V`, 3)}`), result('Mínimo PMOS estimado', String.raw`V_{SD,min,L}\approx${q(p.loadHeadroom, String.raw`\mathrm V`, 3)}`)],
+    note: p.compliant ? 'Ambos têm margem de saturação no proxy de 99%. Isso não valida excursão de sinal nem banda.' : 'O ponto quiescente não atende ao critério de saturação do proxy.',
+  };
+}
