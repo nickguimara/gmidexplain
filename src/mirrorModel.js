@@ -32,7 +32,7 @@ export function mirrorPoint(efficiency, length) {
 
 export const MIRROR_METRICS = {
   error: { key: 'errorPercent', title: 'Erro de cópia', symbol: '|ΔI|/I = σ(ΔV_T)·gₘ/Iᴅ', unit: '%', description: 'Desvio relativo entre I_out e I_ref, considerando apenas o mismatch de V_T entre M1 e M2.' },
-  compliance: { key: 'vMinOut', title: 'Tensão de compliance', symbol: 'Vᴅs,out,mín ≈ 2/(gₘ/Iᴅ)', unit: 'V', shared: true, description: 'Menor V_DS que o transistor de saída precisa para continuar em saturação.' },
-  gain: { key: 'gain', title: 'Ganho com carga em espelho', symbol: '|Aᵥ| = gₘ·r_out', unit: 'V/V', description: 'Ganho de um estágio cuja carga é o próprio espelho: ele é limitado pela resistência de saída do transistor de saída.' },
-  areaCurrent: { title: 'Área × corrente' },
+  compliance: { key: 'vMinOut', title: 'Tensão de compliance mínima', symbol: 'Vᴅs,out,mín ≈ 2/(gₘ/Iᴅ)', unit: 'V', shared: true, description: 'Menor V_DS que o transistor de saída precisa para continuar em saturação.' },
+  // painis empilhados como no fonte comum: em cima W por L, embaixo a corrente que a largura tem de suprir
+  width: { title: 'W para a corrente pedida', symbol: 'W = I_out / (I_out/W)', unit: 'µm' },
 };

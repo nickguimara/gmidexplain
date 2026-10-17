@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BookOpen, Download, FlaskConical, Info } from 'lucide-react';
 import { designPoint, LENGTHS, COLORS, METRICS, BIAS } from './model';
-import AreaCurrentChart from './AreaCurrentChart';
+import TradeoffChart from './TradeoffChart';
 import ExampleLinks from './ExampleLinks';
 import LabShell from './LabShell';
 import { EfficiencyControl, LabChart, LabDialog, LengthSelector, Metric, fmt } from './labUi';
@@ -52,7 +52,7 @@ function CommonSourcePage() {
       <div className="plots-full"><div className="plots-grid">{Object.entries(METRICS).map(([metric, config]) => <section className={`card plot-card plot-${metric}`} key={metric}>
         <div className="plot-header"><h2>{config.title}</h2>{config.symbol && <span className="plot-symbol">{config.symbol}</span>}</div>
         <div className="regime-labels"><span>FORTE</span><span>MODERADA</span><span>FRACA</span></div>
-        {metric === 'areaCurrent' ? <AreaCurrentChart {...{ efficiency, setEfficiency, length }} /> : <LabChart id={`cs-${metric}`} config={config} evaluate={(e, l) => designPoint(e, l)[metric]} tall={metric === 'ft'} {...{ efficiency, setEfficiency, length }} />}
+        {metric === 'areaCurrent' ? <TradeoffChart {...{ efficiency, setEfficiency, length }} /> : <LabChart id={`cs-${metric}`} config={config} evaluate={(e, l) => designPoint(e, l)[metric]} tall={metric === 'ft'} {...{ efficiency, setEfficiency, length }} />}
         {metric === 'headroom' && <p className="headroom-definition">Headroom é a tensão mínima que o transistor precisa entre dreno e fonte para operar em saturação, região em que queremos usá-lo como amplificador.</p>}
       </section>)}
         <section className="card operating-card summary-card"><div className="operating-top"><h2>Ponto selecionado</h2><span className="selected-length" style={{ color: COLORS[LENGTHS.indexOf(length)] }}>L = {fmt(length, 2)} µm</span></div><div className="metrics-grid"><Metric label="GANHO" symbol="|Aᵥ|" value={fmt(point.gain)} unit="V/V" /><Metric label="HEADROOM NMOS" symbol="Vᴅs,sat ≈" value={fmt(point.headroom, 3)} unit="V" /><Metric label="ÁREA" symbol="W·L" value={fmt(point.area, 2)} unit="µm²" /><Metric label="CORRENTE" symbol="Iᴅ" value={fmt(point.current)} unit="µA" /></div></section></div></div>

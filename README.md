@@ -33,14 +33,15 @@ A faixa de comprimento inclui 0,13 µm para exploração conceitual: sua validad
 
 Segundo bloco, em `/#/espelho`, com o mesmo controle contínuo (gm/ID, gm fixo em 300 µS) e o mesmo seletor de L do fonte comum. O modelo vive em `src/mirrorModel.js` e reaproveita `operatingPoint`, de modo que largura, área e ganho intrínseco são exatamente os mesmos do primeiro experimento.
 
-M1 é diodo-conectado (gate preso ao dreno) e M2 é o transistor de saída; a razão é fixa em 1:1, então I_out = I_ref = g_m/(g_m/I_D). Os quatro gráficos usam o mesmo eixo horizontal — gm/ID — com uma curva por L:
+M1 é diodo-conectado (gate preso ao dreno) e M2 é o transistor de saída; a razão é fixa em 1:1, então I_out = I_ref = g_m/(g_m/I_D). Os gráficos usam o mesmo eixo horizontal — gm/ID — com uma curva por L:
 
-- **Erro de cópia** (`|ΔI|/I = σ(ΔV_T)·(g_m/I_D)`, em %): lei de Pelgrom com σ(ΔV_T) = K_V/√(W·L) e **K_V = 0,5 mV·µm**, um proxy didático, não uma extração de PDK. Como I ∝ V_OV² e V_OV = 2/(g_m/I_D), o erro relativo de corrente cresce com o gm/ID e cai com a área. No modelo: 1,67% em L = 0,13 µm contra 0,22% em L = 1 µm (a g_m/I_D = 15). Só a parcela de mismatch entra no gráfico; o erro por modulação de canal (λ·V_DS) existe e entra em quadratura, mas neste modelo depende apenas de L e não varyaria com o eixo do gráfico.
-- **Tensão de compliance** (V): V_DS,out,mín ≈ 2/(g_m/I_D), igual à expressão de headroom do fonte comum e por isso independente de L — aparece como curva única. O texto abaixo do gráfico compara a compliance do ponto com o V_DS,out = 0,6 V assumido e mostra a folga restante, porque é o único número do bloco que precisa ser comparado com um valor fixo.
-- **Ganho com carga em espelho** (V/V): |A_v| = g_m·r_out, o mesmo limite do primeiro experimento, agora imposto pelo transistor de saída do espelho. Com o gm/ID fixo a corrente não muda, então um L maior compra ganho e precisão pagando apenas em área.
-- **Área × corrente**: dois painéis empilhados, agora com a **área do par** 2·W·L e I_out.
+- **Erro de cópia** (`|ΔI|/I = σ(ΔV_T)·(g_m/I_D)`, em %): lei de Pelgrom com σ(ΔV_T) = K_V/√(W·L) e **K_V = 0,5 mV·µm**, um proxy didático, não uma extração de PDK. Como I ∝ V_OV² e V_OV = 2/(g_m/I_D), o erro relativo de corrente cresce com o gm/ID e cai com a área. No modelo: 1,67% em L = 0,13 µm contra 0,22% em L = 1 µm (a g_m/I_D = 15). Só a parcela de mismatch entra no gráfico; o erro por modulação de canal (λ·V_DS) existe e entra em quadratura, mas neste modelo depende apenas de L e não variaria com o eixo do gráfico.
+- **Tensão de compliance mínima** (V): V_DS,out,mín ≈ 2/(g_m/I_D), igual à expressão de headroom do fonte comum e por isso independente de L — aparece como curva única. O texto abaixo do gráfico compara a compliance do ponto com o V_DS,out = 0,6 V assumido e mostra a folga restante, porque é o único número do bloco que precisa ser comparado com um valor fixo.
+- **W para a corrente pedida** (µm, log): dois painéis empilhados, o mesmo componente do fonte comum com outras chaves. Acima, a largura de **cada** transistor para a corrente de saída escolhida, uma curva por L; abaixo, a corrente que essa largura precisa suprir, igual para todos os L. É a leitura direta de W = I_out/(I_out/W): no modelo, W vai de 0,29 µm (g_m/I_D = 5, L = 0,13 µm) a 95,5 µm (g_m/I_D = 25, L = 1 µm). Inversão fraca entrega a mesma corrente com muito menos largura, ao custo de compliance e ganho.
 
-O cartão "Ponto selecionado" resume corrente copiada, erro de cópia, área do par, compliance mínima e a **folga de saída** (V_DS,out − V_DS,out,mín), que é a margem real antes de M2 sair de saturação. Quando o erro por mismatch ultrapassa a meta didática de 1%, aparece um aviso laranja no lugar da seção de saturação do fonte comum. Exporta CSV próprio (`gmid-espelho-ilustrativo.csv`) e tem guia próprio. Efeito de corpo, razão k:1, mismatch de layout e a dependência de V_DS na saída não são modelados.
+Os quatro gráficos do fonte comum continuam sendo ganho, headroom, fT e área × corrente. O espelho tem três: erro de cópia, compliance mínima e W. O gráfico de ganho em espelho (g_m·r_out) foi removido por repetir a curva de ganho do fonte comum com outros rótulos; o valor continua disponível no modelo e no CSV.
+
+O cartão "Ponto selecionado" resume corrente copiada, erro de cópia, **W necessária**, compliance mínima e a **folga de saída** (V_DS,out − V_DS,out,mín), que é a margem real antes de M2 sair de saturação. Quando o erro por mismatch ultrapassa a meta didática de 1%, aparece um aviso laranja no lugar da seção de saturação do fonte comum. Exporta CSV próprio (`gmid-espelho-ilustrativo.csv`) e tem guia próprio. Efeito de corpo, razão k:1, mismatch de layout e a dependência de V_DS na saída não são modelados.
 
 ## Ruído
 
@@ -122,7 +123,7 @@ A última desigualdade pode impor limite inferior **ou superior** de ID; interva
 
 ## Arquitetura da interface
 
-`src/labUi.jsx` concentra o que os dois blocos compartilham: o gráfico de curva única por métrica (`LabChart`, com `evaluate(gm/ID, L)` injetado), o slider de gm/ID, o seletor de comprimento, o cartão de métrica e o diálogo modal com armadilha de foco. `src/LabShell.jsx` desenha menu lateral e barra superior, marcando o bloco ativo e navegando por hash. `AreaCurrentChart` também é reutilizado: recebe `evaluate` e as chaves de área e corrente, então o mesmo componente serve ao par do espelho.
+`src/labUi.jsx` concentra o que os dois blocos compartilham: o gráfico de curva única por métrica (`LabChart`, com `evaluate(gm/ID, L)` injetado), o slider de gm/ID, o seletor de comprimento, o cartão de métrica e o diálogo modal com armadilha de foco. `src/LabShell.jsx` desenha menu lateral e barra superior, marcando o bloco ativo e navegando por hash. `TradeoffChart.jsx` (antes `AreaCurrentChart.jsx`) desenha os dois painéis empilhados: recebe `evaluate`, as chaves, os rótulos e a faixa logarítmica por props, então o mesmo componente serve à área de gate do fonte comum e à largura do espelho.
 
 ## Próxima etapa: caracterização real
 
